@@ -1,0 +1,814 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#174a7e" />
+<meta name="description" content="MARGDARSHI — National Highway administration and project reporting system." />
+<title>MARGDARSHI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+:root {
+  --primary: #174a7e;
+  --primary-dark: #0f3a66;
+  --teal: #197a8c;
+  --bg: #f5f7fa;
+  --card: #ffffff;
+  --text: #1f2937;
+  --muted: #64748b;
+  --border: #dce3ea;
+  --green: #16855b;
+  --amber: #c66a05;
+  --red: #d13c3c;
+  --blue: #1f65b5;
+  --shadow: 0 8px 24px rgba(23, 74, 126, .08);
+  font-family: Inter, Arial, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  font-synthesis: none;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; background: var(--bg); }
+body { min-width: 320px; }
+button, input, select, textarea { font: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: wait; opacity: .72; }
+.icon { flex: 0 0 auto; }
+
+.loading-screen { min-height: 100vh; display: grid; place-content: center; gap: 14px; text-align: center; color: var(--muted); }
+.spinner { width: 17px; height: 17px; display: inline-block; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; border-radius: 999px; animation: spin .75s linear infinite; }
+.spinner.dark { width: 28px; height: 28px; margin: auto; border-color: #d7e1eb; border-top-color: var(--primary); }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.auth-page { min-height: 100vh; display: grid; grid-template-columns: minmax(460px, 1.15fr) minmax(420px, .85fr); }
+.auth-brand-panel { position: relative; overflow: hidden; padding: 38px 52px; display: flex; flex-direction: column; color: #fff; background: linear-gradient(145deg, #0e3d6f, #176b91); }
+.auth-brand-panel::before, .auth-brand-panel::after { content: ""; position: absolute; border-radius: 50%; border: 1px solid rgba(255,255,255,.12); }
+.auth-brand-panel::before { width: 560px; height: 560px; right: -230px; top: -210px; }
+.auth-brand-panel::after { width: 360px; height: 360px; left: -150px; bottom: -180px; }
+.brand-lockup { display: flex; align-items: center; gap: 12px; min-width: 240px; }
+.brand-lockup .emblem { width: 48px; height: 48px; border: 1px solid rgba(255,255,255,.38); border-radius: 10px; display: grid; place-items: center; font-size: 12px; font-weight: 800; letter-spacing: .08em; }
+.brand-lockup strong { display: block; font-size: 21px; letter-spacing: .025em; }
+.brand-lockup span { display: block; font-size: 12px; opacity: .88; margin-top: 3px; }
+.auth-intro { z-index: 1; max-width: 650px; margin: auto 0; }
+.eyebrow { margin: 0 0 10px; color: var(--teal); font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.auth-intro .eyebrow { color: #9ee0eb; }
+.auth-intro h1 { font-size: clamp(34px, 4vw, 56px); line-height: 1.08; letter-spacing: -.04em; margin: 0 0 22px; }
+.auth-intro > p:not(.eyebrow) { max-width: 600px; color: rgba(255,255,255,.82); font-size: 17px; line-height: 1.7; }
+.auth-feature-grid { display: grid; grid-template-columns: repeat(2, minmax(160px, 1fr)); gap: 12px; margin-top: 30px; max-width: 520px; }
+.auth-feature-grid div { display: flex; align-items: center; gap: 10px; padding: 13px 15px; background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.12); border-radius: 10px; font-size: 13px; font-weight: 600; }
+.auth-department { z-index: 1; font-size: 12px; opacity: .74; }
+.auth-form-panel { padding: 36px; display: grid; place-items: center; background: linear-gradient(180deg, #fbfcfe, #f3f6f9); }
+.auth-card { width: min(100%, 440px); padding: 36px; border: 1px solid var(--border); background: var(--card); border-radius: 16px; box-shadow: var(--shadow); }
+.auth-card-heading h2 { margin: 0; font-size: 29px; letter-spacing: -.02em; }
+.auth-card-heading > p:last-child { margin: 8px 0 26px; color: var(--muted); font-size: 14px; }
+.mobile-brand { display: none; }
+label { display: grid; gap: 7px; color: #334155; font-size: 13px; font-weight: 600; }
+input, select, textarea { width: 100%; border: 1px solid #cfd9e3; border-radius: 8px; padding: 11px 12px; color: var(--text); background: #fff; outline: none; transition: border-color .2s, box-shadow .2s; }
+input:focus, select:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(23,74,126,.10); }
+#login-form { display: grid; gap: 18px; }
+.btn { min-height: 42px; border: 1px solid transparent; border-radius: 8px; padding: 9px 16px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; font-size: 13px; transition: transform .15s, background .15s, border-color .15s; }
+.btn:hover { transform: translateY(-1px); }
+.btn.primary { background: var(--primary); color: #fff; box-shadow: 0 5px 14px rgba(23,74,126,.18); }
+.btn.primary:hover { background: var(--primary-dark); }
+.btn.secondary { color: var(--primary); border-color: #cbd8e4; background: #fff; }
+.btn.full { width: 100%; }
+.auth-divider { display: flex; align-items: center; gap: 10px; margin: 24px 0 15px; color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+.auth-divider::before, .auth-divider::after { content: ""; height: 1px; flex: 1; background: #e4e9ef; }
+.preview-link { display: block; margin: 14px auto 0; border: 0; background: transparent; color: var(--teal); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
+.auth-security { margin: 20px 0 0; text-align: center; color: #94a3b8; font-size: 11px; line-height: 1.5; }
+.form-error { min-height: 16px; margin: 0; color: var(--red); font-size: 12px; font-weight: 500; }
+
+.app-shell { min-height: 100vh; display: grid; grid-template-columns: 245px 1fr; grid-template-rows: 96px 1fr; }
+.topbar { position: sticky; top: 0; z-index: 20; grid-column: 1 / -1; display: grid; grid-template-columns: 275px minmax(260px, 740px) 1fr; align-items: center; gap: 28px; padding: 0 34px 0 24px; background: linear-gradient(90deg, #10447a, #07558e); color: #fff; box-shadow: 0 2px 7px rgba(15,58,102,.18); }
+.global-search { height: 54px; display: flex; align-items: center; gap: 12px; padding: 0 14px; border-radius: 10px; background: #fff; color: var(--muted); box-shadow: 0 5px 16px rgba(0,0,0,.13); }
+.global-search input { border: 0; box-shadow: none; padding: 0; background: transparent; }
+.global-search kbd { padding: 4px 7px; border: 1px solid #dce3ea; border-radius: 5px; color: #64748b; background: #f6f8fa; white-space: nowrap; }
+.topbar-actions { justify-self: end; display: flex; align-items: center; gap: 18px; }
+.notification-button { position: relative; display: grid; place-items: center; border: 0; background: transparent; color: #fff; }
+.notification-button span { position: absolute; top: -9px; right: -8px; min-width: 19px; height: 19px; display: grid; place-items: center; border: 2px solid #0b5188; border-radius: 999px; background: #ef4444; font-size: 10px; font-weight: 700; }
+.user-menu { display: flex; align-items: center; gap: 10px; }
+.avatar { width: 42px; height: 42px; display: grid; place-items: center; border: 2px solid rgba(255,255,255,.65); border-radius: 50%; background: rgba(255,255,255,.16); font-weight: 700; }
+.user-menu strong, .user-menu span { display: block; }
+.user-menu strong { font-size: 13px; }.user-menu span { margin-top: 3px; color: rgba(255,255,255,.78); font-size: 11px; }
+.icon-button { width: 38px; height: 38px; display: inline-grid; place-items: center; padding: 0; border: 0; border-radius: 8px; color: inherit; background: transparent; }
+.icon-button:hover { background: rgba(255,255,255,.12); }
+.sidebar { position: sticky; top: 96px; height: calc(100vh - 96px); display: flex; flex-direction: column; justify-content: space-between; padding: 24px 12px 14px; background: #fff; border-right: 1px solid var(--border); }
+.sidebar nav { display: grid; gap: 7px; }
+.nav-item { width: 100%; min-height: 52px; display: flex; align-items: center; gap: 14px; padding: 0 16px; border: 0; border-radius: 8px; color: #334155; background: transparent; text-align: left; font-size: 13px; }
+.nav-item span { flex: 1; }.nav-item:hover { background: #f4f7fa; }.nav-item.active { position: relative; color: #0f4f93; background: #edf3f9; font-weight: 600; }
+.nav-item.active::before { content: ""; position: absolute; left: -12px; top: 0; bottom: 0; width: 3px; border-radius: 3px; background: #1664b3; }
+.sidebar-footer { padding: 18px 14px; border: 1px solid var(--border); border-radius: 10px; background: #fbfcfd; }
+.sidebar-footer .road-mark { width: 39px; height: 39px; margin-bottom: 12px; display: grid; place-items: center; border-radius: 9px; color: #fff; background: var(--teal); font-size: 11px; font-weight: 800; }
+.sidebar-footer strong, .sidebar-footer span { display: block; }.sidebar-footer strong { font-size: 12px; }.sidebar-footer span { margin-top: 7px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.main-content { min-width: 0; padding: 30px 24px; }
+.register-page { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 26px; }
+.content-column { min-width: 0; }
+.breadcrumb { display: flex; gap: 11px; align-items: center; color: var(--muted); font-size: 12px; }.breadcrumb span { color: #1760aa; }.breadcrumb b { color: #c2ccd6; }
+.page-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin: 20px 0 24px; }
+h1, h2, h3, p { overflow-wrap: anywhere; }
+.page-heading h1 { margin: 0; font-size: 35px; line-height: 1.1; letter-spacing: -.035em; }.page-heading p { margin: 9px 0 0; color: var(--muted); font-size: 14px; }
+.filter-card { display: grid; grid-template-columns: minmax(210px, 1.5fr) repeat(3, minmax(125px, .7fr)) auto; gap: 12px; align-items: stretch; margin-bottom: 14px; padding: 17px; border: 1px solid var(--border); border-radius: 11px; background: #fff; box-shadow: 0 4px 15px rgba(31,41,55,.035); }
+.search-input { display: flex; align-items: center; gap: 9px; padding: 0 12px; border: 1px solid #d1dae4; border-radius: 8px; color: var(--muted); }.search-input input { border: 0; padding: 0; box-shadow: none; background: transparent; }
+.select-field { position: relative; gap: 1px; padding: 6px 9px; border: 1px solid #d1dae4; border-radius: 8px; background: #fff; }
+.select-field span { color: #475569; font-size: 10px; }.select-field select { border: 0; padding: 0; box-shadow: none; background: transparent; font-weight: 500; }
+.btn.reset { color: var(--teal); border-color: #d1dae4; background: #fff; }
+.table-card { overflow: hidden; border: 1px solid var(--border); border-radius: 11px; background: #fff; box-shadow: 0 5px 18px rgba(31,41,55,.045); }
+.table-scroll { overflow-x: auto; }.data-table { width: 100%; border-collapse: collapse; font-size: 12px; }.data-table th { height: 51px; padding: 0 15px; color: #334155; background: #fafbfc; border-bottom: 1px solid var(--border); text-align: left; font-weight: 600; white-space: nowrap; }.data-table td { height: 66px; padding: 9px 15px; border-bottom: 1px solid #e5eaf0; vertical-align: middle; }.data-table tbody tr { cursor: pointer; transition: background .15s; }.data-table tbody tr:hover, .data-table tbody tr:focus { outline: none; background: #f7faff; }.data-table td strong, .data-table td span { display: block; }.data-table td > strong { color: #273244; font-size: 12px; }.data-table td > span:not(.status-badge) { margin-top: 5px; color: var(--muted); font-size: 10px; }.data-table th:first-child, .data-table td:first-child { min-width: 230px; }.data-table th:nth-child(3), .data-table td:nth-child(3) { min-width: 130px; }
+.progress-cell { min-width: 100px; }.progress-cell > strong { font-size: 11px !important; }.progress-track { width: 100%; height: 6px; margin-top: 7px; overflow: hidden; border-radius: 999px; background: #dfe5eb; }.progress-track span { height: 100%; display: block; border-radius: inherit; background: linear-gradient(90deg, #145ca5, #197a8c); }
+.status-badge { width: fit-content; min-height: 27px; display: inline-flex !important; align-items: center; gap: 7px; padding: 4px 10px; border: 1px solid; border-radius: 999px; font-size: 10px !important; font-weight: 600; white-space: nowrap; }.status-badge i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }.status-badge.healthy { color: #16855b; border-color: #bce3d2; background: #edf9f3; }.status-badge.attention { color: #ba6707; border-color: #f3d59c; background: #fff8e8; }.status-badge.delayed { color: #d13c3c; border-color: #f2bbbb; background: #fff0f0; }.status-badge.draft { color: #64748b; border-color: #d6dde5; background: #f5f7f9; }.status-badge.progress { color: #1760aa; border-color: #bfd5ea; background: #edf5fc; }.status-badge.large { padding: 7px 13px; font-size: 12px !important; }
+.row-menu { color: #345270; }.row-menu:hover { background: #edf3f8; }
+.table-footer { padding: 15px 18px; color: var(--muted); font-size: 11px; }
+.empty-state { min-height: 300px; display: grid; place-content: center; justify-items: center; padding: 30px; color: var(--muted); text-align: center; }.empty-state h3 { margin: 15px 0 6px; color: var(--text); }.empty-state p { margin: 0; font-size: 13px; }
+.insights-column { display: grid; align-content: start; gap: 14px; }.insight-card, .demo-banner { padding: 18px; border: 1px solid var(--border); border-radius: 11px; background: #fff; box-shadow: 0 5px 18px rgba(31,41,55,.045); }.insight-card h2 { margin: 0 0 13px; font-size: 14px; }.metric-row { display: flex; align-items: center; gap: 13px; padding: 12px 0; border-bottom: 1px solid #e8edf2; }.metric-row:last-child { border-bottom: 0; }.metric-icon { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 9px; }.metric-icon.blue { color: #175999; background: #eaf2f9; }.metric-icon.teal { color: #197a8c; background: #e7f5f7; }.metric-icon.amber { color: #c66a05; background: #fff2e5; }.metric-icon.green { color: #388a28; background: #edf7ea; }.metric-row span, .metric-row strong { display: block; }.metric-row span { color: var(--muted); font-size: 11px; }.metric-row strong { margin-top: 4px; font-size: 20px; }.card-title-row { display: flex; justify-content: space-between; }.card-title-row button, .text-button { border: 0; color: #1760aa; background: transparent; font-size: 11px; }.action-row { min-height: 42px; display: grid; grid-template-columns: 1fr auto auto; gap: 9px; align-items: center; border-bottom: 1px solid #edf0f3; font-size: 11px; }.action-row:last-child { border: 0; }.action-row > span { display: flex; gap: 8px; align-items: center; }.action-row b { min-width: 25px; height: 23px; display: grid; place-items: center; border-radius: 999px; background: #f1f4f7; font-size: 10px; }.dot { width: 7px; height: 7px; display: inline-block; border-radius: 50%; }.dot.amber { background: #d98900; }.dot.orange { background: #ed6b21; }.dot.blue { background: #1686bd; }.dot.red { background: #dc4b4b; }.dot.teal { background: #197a8c; }.demo-banner { border-color: #bcd9e1; background: #f1fafb; }.demo-banner strong { color: var(--teal); }.demo-banner p { color: var(--muted); font-size: 11px; line-height: 1.5; }.demo-banner a { color: var(--primary); font-size: 11px; font-weight: 600; }
+
+.modal { width: min(92vw, 780px); max-height: 92vh; padding: 0; border: 0; border-radius: 14px; background: transparent; box-shadow: 0 25px 70px rgba(15,23,42,.28); }.modal::backdrop { background: rgba(15,35,55,.52); backdrop-filter: blur(2px); }.compact-modal { width: min(92vw, 480px); }.modal-card { max-height: 92vh; overflow-y: auto; padding: 27px; border-radius: 14px; background: #fff; }.modal-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 23px; }.modal-heading h2 { margin: 0; font-size: 24px; }.modal-heading p:last-child { margin: 7px 0 0; color: var(--muted); font-size: 12px; }.modal-heading .icon-button { color: #64748b; }.modal-heading .icon-button:hover { background: #f1f5f8; }.form-section { padding: 20px 0; border-top: 1px solid #e5eaf0; }.form-section h3 { margin: 0 0 16px; font-size: 14px; }.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }.form-grid.single { grid-template-columns: 1fr; }.form-grid .wide { grid-column: 1 / -1; }.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+.toast { position: fixed; z-index: 100; right: 24px; bottom: 24px; max-width: 380px; padding: 13px 17px; border-radius: 9px; color: #fff; background: #15805a; box-shadow: 0 12px 30px rgba(15,23,42,.22); font-size: 12px; font-weight: 600; opacity: 0; transform: translateY(10px); transition: .2s; }.toast.visible { opacity: 1; transform: translateY(0); }.toast.error { background: #c73838; }.toast.info { background: #1760aa; }
+
+.workspace-page { padding: 0; }.workspace-header { padding: 28px 34px 25px; color: #fff; background: linear-gradient(120deg, #0f477d, #17648c); }.back-link { display: flex; align-items: center; gap: 6px; padding: 0; border: 0; color: rgba(255,255,255,.8); background: transparent; font-size: 12px; }.workspace-title-row { display: flex; justify-content: space-between; gap: 25px; margin-top: 23px; }.workspace-meta { display: flex; gap: 8px; color: #a9d1e3; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }.workspace-title-row h1 { margin: 10px 0 7px; font-size: 31px; letter-spacing: -.03em; }.workspace-title-row p { max-width: 770px; margin: 0; color: rgba(255,255,255,.72); font-size: 13px; line-height: 1.55; }.workspace-header .status-badge { align-self: start; }.workspace-stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 26px; }.workspace-stat-grid > div { min-height: 104px; padding: 15px; border: 1px solid rgba(255,255,255,.12); border-radius: 10px; background: rgba(255,255,255,.09); }.workspace-stat-grid span, .workspace-stat-grid strong, .workspace-stat-grid small { display: block; }.workspace-stat-grid > div > span { color: rgba(255,255,255,.68); font-size: 10px; text-transform: uppercase; letter-spacing: .07em; }.workspace-stat-grid > div > strong { margin: 9px 0; font-size: 20px; }.workspace-stat-grid small { color: rgba(255,255,255,.65); font-size: 10px; }.workspace-stat-grid .progress-track { background: rgba(255,255,255,.2); }.workspace-stat-grid .progress-track span { background: #72d2df; }.workspace-body { padding: 0 34px 34px; }.tabs { display: flex; gap: 5px; overflow-x: auto; margin: 0 -34px 25px; padding: 0 34px; border-bottom: 1px solid var(--border); background: #fff; }.tab { min-height: 60px; display: flex; align-items: center; gap: 7px; padding: 0 15px; border: 0; border-bottom: 3px solid transparent; color: var(--muted); background: transparent; font-size: 12px; white-space: nowrap; }.tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }.overview-layout { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(270px, .75fr); gap: 18px; }.panel { padding: 22px; border: 1px solid var(--border); border-radius: 11px; background: #fff; box-shadow: 0 4px 16px rgba(31,41,55,.04); }.panel-heading { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }.panel-heading h2 { margin: 0; font-size: 15px; }.detail-list { display: grid; grid-template-columns: 1fr 1fr; margin: 0; }.detail-list div { padding: 14px 6px; border-bottom: 1px solid #e8edf2; }.detail-list dt { color: var(--muted); font-size: 10px; }.detail-list dd { margin: 6px 0 0; font-size: 12px; font-weight: 600; }.attention-list { display: grid; gap: 5px; }.attention-list > div { display: flex; gap: 10px; align-items: flex-start; padding: 13px 0; border-bottom: 1px solid #e8edf2; }.attention-list > div:last-child { border: 0; }.attention-list .dot { margin-top: 5px; }.attention-list strong, .attention-list small { display: block; }.attention-list strong { font-size: 11px; }.attention-list small { margin-top: 4px; color: var(--muted); font-size: 10px; line-height: 1.45; }.module-empty { min-height: 380px; display: grid; place-content: center; justify-items: center; text-align: center; color: var(--muted); }.module-empty h2 { margin: 15px 0 5px; color: var(--text); }.module-empty p { max-width: 450px; margin: 0 0 19px; font-size: 12px; line-height: 1.5; }
+
+@media (max-width: 1180px) {
+  .topbar { grid-template-columns: 240px 1fr auto; }.user-menu > div:last-child { display: none; }.register-page { grid-template-columns: 1fr; }.insights-column { grid-template-columns: repeat(2, 1fr); }.demo-banner { grid-column: 1 / -1; }.filter-card { grid-template-columns: minmax(200px, 1fr) repeat(2, minmax(120px, .65fr)); }.filter-card .select-field:nth-of-type(3) { display: none; }
+}
+@media (max-width: 900px) {
+  .auth-page { grid-template-columns: 1fr; }.auth-brand-panel { display: none; }.auth-form-panel { min-height: 100vh; }.mobile-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; color: var(--primary); }.mobile-brand .emblem { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 8px; color: #fff; background: var(--primary); font-size: 10px; }
+  .app-shell { grid-template-columns: 78px 1fr; grid-template-rows: 82px 1fr; }.topbar { grid-template-columns: 60px 1fr auto; height: 82px; padding: 0 16px; }.topbar .brand-lockup > div:last-child { display: none; }.topbar .brand-lockup { min-width: auto; }.topbar .emblem { width: 42px; height: 42px; }.global-search kbd { display: none; }.sidebar { top: 82px; height: calc(100vh - 82px); padding-inline: 8px; }.nav-item { justify-content: center; padding: 0; }.nav-item span, .nav-item svg:last-child, .sidebar-footer strong, .sidebar-footer span { display: none; }.nav-item.active::before { left: -8px; }.sidebar-footer { padding: 10px; }.sidebar-footer .road-mark { width: 34px; height: 34px; margin: auto; }.main-content { padding: 22px 18px; }.filter-card { grid-template-columns: 1fr 1fr; }.search-input { grid-column: 1 / -1; min-height: 43px; }.btn.reset { width: 100%; }.workspace-stat-grid { grid-template-columns: 1fr 1fr; }.overview-layout { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+  .auth-form-panel { padding: 18px; }.auth-card { padding: 25px; }.app-shell { grid-template-columns: 1fr; grid-template-rows: 72px 1fr; }.topbar { grid-template-columns: auto 1fr auto; height: 72px; }.global-search { height: 44px; }.global-search input { min-width: 0; }.notification-button, .user-menu { display: none; }.sidebar { position: fixed; z-index: 30; left: 0; right: 0; bottom: 0; top: auto; width: 100%; height: 66px; flex-direction: row; padding: 6px 8px; border-right: 0; border-top: 1px solid var(--border); }.sidebar nav { width: 100%; grid-template-columns: repeat(5, 1fr); gap: 3px; }.nav-item { min-height: 52px; }.nav-item:nth-child(6) { display: none; }.nav-item.active::before { left: 20%; right: 20%; top: -6px; bottom: auto; width: auto; height: 3px; }.sidebar-footer { display: none; }.main-content { padding: 18px 12px 82px; }.page-heading { align-items: stretch; flex-direction: column; }.page-heading .btn { align-self: flex-start; }.page-heading h1 { font-size: 29px; }.filter-card { grid-template-columns: 1fr; }.search-input { grid-column: auto; }.filter-card .select-field:nth-of-type(3) { display: grid; }.insights-column { grid-template-columns: 1fr; }.data-table th:nth-child(2), .data-table td:nth-child(2), .data-table th:nth-child(3), .data-table td:nth-child(3), .data-table th:nth-child(6), .data-table td:nth-child(6) { display: none; }.workspace-header { padding: 20px 16px 22px; }.workspace-title-row { flex-direction: column; }.workspace-title-row h1 { font-size: 26px; }.workspace-stat-grid { grid-template-columns: 1fr; }.workspace-body { padding: 0 14px 82px; }.tabs { margin-inline: -14px; padding-inline: 14px; }.detail-list { grid-template-columns: 1fr; }.form-grid { grid-template-columns: 1fr; }.form-grid .wide { grid-column: auto; }.modal-card { padding: 20px; }
+}
+
+</style>
+</head>
+<body>
+<div id="app" aria-live="polite"></div>
+<script>
+const CONFIG = Object.freeze({
+  supabaseUrl: "https://aegdytymgucgxxdgzsij.supabase.co",
+  supabasePublishableKey: "sb_publishable_hYB33w3ZowZunNnnJv3OkQ_GbKe2OhE",
+  appName: "MARGDARSHI",
+  officeName: "National Highway Division, Dhule",
+});
+
+const paths = {
+  dashboard: '<path d="M3 11.5 12 4l9 7.5"/><path d="M5 10.5V20h14v-9.5"/><path d="M9 20v-6h6v6"/>',
+  projects: '<path d="m12 3-9 5 9 5 9-5-9-5Z"/><path d="m3 12 9 5 9-5"/><path d="m3 16 9 5 9-5"/>',
+  mail: '<rect width="18" height="14" x="3" y="5" rx="2"/><path d="m3 7 9 6 9-6"/>',
+  calendar: '<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+  reports: '<path d="M4 19V5a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2Z"/><path d="M8 17v-5M12 17V7M16 17v-8"/>',
+  settings: '<path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.12 2.12-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V20.3h-3v-.08a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06-2.12-2.12.06-.06A1.7 1.7 0 0 0 7.02 15a1.7 1.7 0 0 0-1.56-1.03H5.4v-3h.06A1.7 1.7 0 0 0 7.02 9a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.12-2.12.06.06A1.7 1.7 0 0 0 10.68 5a1.7 1.7 0 0 0 1.03-1.56V3.4h3v.04A1.7 1.7 0 0 0 15.74 5a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.12 2.12-.06.06A1.7 1.7 0 0 0 19.4 9a1.7 1.7 0 0 0 1.56 1.03h.04v3h-.04A1.7 1.7 0 0 0 19.4 15Z"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
+  bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  reset: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>',
+  folder: '<path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/>',
+  construction: '<path d="M4 20h16M6 20V8l6-4 6 4v12M9 20v-6h6v6M8 10h8"/>',
+  clipboard: '<rect width="14" height="18" x="5" y="3" rx="2"/><path d="M9 3V1h6v2M9 8h6M9 12h6M9 16h4"/>',
+  check: '<circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/>',
+  logout: '<path d="M10 17l5-5-5-5M15 12H3"/><path d="M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5"/>',
+  arrow: '<path d="m9 18 6-6-6-6"/>',
+  back: '<path d="m15 18-6-6 6-6"/>',
+  document: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6M8 13h8M8 17h8"/>',
+  inspection: '<path d="M9 11 11 13 15 9"/><path d="M6 3h12a2 2 0 0 1 2 2v16l-4-2-4 2-4-2-4 2V5a2 2 0 0 1 2-2Z"/>',
+  timeline: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  close: '<path d="m6 6 12 12M18 6 6 18"/>',
+  menu: '<circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>',
+};
+
+function icon(name, size = 20, className = "") {
+  return `<svg class="icon ${className}" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || ""}</svg>`;
+}
+
+const DEMO_PROFILE = {
+  full_name: "Rahul Potdar",
+  designation: "Sectional Engineer",
+  role: "admin",
+  office_name: "National Highway Division, Dhule",
+};
+
+const DEMO_PROJECTS = [
+  { id: "demo-1", project_code: "NH753B-PKG1-BAL", project_name: "NH-753B Package-1 Balance Works", highway_number: "NH-753B", mode: "EPC", status: "construction", status_label: "Under Construction", physical_progress_pct: 0, financial_progress_pct: 0, health_label: "In Progress", pending_actions_count: 2, implementing_office_name: "National Highway Division, Dhule", updated_at: "2026-07-25T08:00:00Z", description: "Balance works and approaches under Package-1." },
+  { id: "demo-2", project_code: "NH753B-PKG1-MAIN", project_name: "NH-753B Package-1 Main Project", highway_number: "NH-753B", mode: "EPC", status: "maintenance", status_label: "Maintenance", physical_progress_pct: 100, financial_progress_pct: 92, health_label: "Attention", pending_actions_count: 4, implementing_office_name: "National Highway Division, Dhule", updated_at: "2026-07-24T09:00:00Z", description: "Main project currently under maintenance obligations." },
+  { id: "demo-3", project_code: "NH753B-PKG2", project_name: "NH-753B Package-2: Nandurbar–Taloda", highway_number: "NH-753B", mode: "EPC", status: "awarded", status_label: "Awarded", physical_progress_pct: 0, financial_progress_pct: 0, health_label: "In Progress", pending_actions_count: 5, implementing_office_name: "National Highway Division, Dhule", updated_at: "2026-07-23T10:00:00Z", description: "Four-laning of Nandurbar–Taloda section." },
+  { id: "demo-4", project_code: "NH753B-PKG3", project_name: "NH-753B Package-3: Taloda–Akkalkuva", highway_number: "NH-753B", mode: "EPC", status: "awarded", status_label: "Awarded", physical_progress_pct: 0, financial_progress_pct: 0, health_label: "Attention", pending_actions_count: 6, implementing_office_name: "National Highway Division, Dhule", updated_at: "2026-07-22T11:00:00Z", description: "Four-laning of Taloda–Akkalkuva section." },
+  { id: "demo-5", project_code: "NH753F-SILLOD", project_name: "NH-753F Nillod Phata–Sillod Section", highway_number: "NH-753F", mode: "EPC", status: "construction", status_label: "Under Construction", physical_progress_pct: 55, financial_progress_pct: 49, health_label: "Delayed", pending_actions_count: 3, implementing_office_name: "National Highway Division, Dhule", updated_at: "2026-07-21T12:00:00Z", description: "Four-lane concrete road including Purna river bridge." },
+  { id: "demo-6", project_code: "NH753J-PKG1", project_name: "NH-753J Package-1: Jalgaon–Bhadgaon", highway_number: "NH-753J", mode: "EPC", status: "maintenance", status_label: "Maintenance", physical_progress_pct: 100, financial_progress_pct: 100, health_label: "Healthy", pending_actions_count: 1, implementing_office_name: "National Highway Division, Dhule", updated_at: "2026-07-20T13:00:00Z", description: "Completed EPC package now under maintenance management." },
+  { id: "demo-7", project_code: "NH753J-PKG2", project_name: "NH-753J Package-2: Bhadgaon–Chalisgaon", highway_number: "NH-753J", mode: "EPC", status: "maintenance", status_label: "Maintenance", physical_progress_pct: 100, financial_progress_pct: 100, health_label: "Healthy", pending_actions_count: 0, implementing_office_name: "National Highway Division, Dhule", updated_at: "2026-07-19T14:00:00Z", description: "Completed EPC package now under maintenance management." },
+];
+
+
+const SESSION_KEY = "margdarshi.session";
+
+function authHeaders(accessToken) {
+  return {
+    apikey: CONFIG.supabasePublishableKey,
+    Authorization: `Bearer ${accessToken}`,
+    "Content-Type": "application/json",
+  };
+}
+
+async function parseResponse(response) {
+  const contentType = response.headers.get("content-type") || "";
+  const payload = contentType.includes("application/json") ? await response.json() : await response.text();
+  if (!response.ok) {
+    const message = payload?.msg || payload?.message || payload?.error_description || payload?.error || "Request failed";
+    throw new Error(message);
+  }
+  return payload;
+}
+
+function getSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    localStorage.removeItem(SESSION_KEY);
+    return null;
+  }
+}
+
+function setSession(session) {
+  if (!session) localStorage.removeItem(SESSION_KEY);
+  else localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+}
+
+export async function signIn(email, password) {
+  const response = await fetch(`${CONFIG.supabaseUrl}/auth/v1/token?grant_type=password`, {
+    method: "POST",
+    headers: {
+      apikey: CONFIG.supabasePublishableKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email, password }),
+  });
+  const session = await parseResponse(response);
+  setSession(session);
+  return session;
+}
+
+export async function signUp({ email, password, fullName, designation }) {
+  const response = await fetch(`${CONFIG.supabaseUrl}/auth/v1/signup`, {
+    method: "POST",
+    headers: {
+      apikey: CONFIG.supabasePublishableKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      email,
+      password,
+      data: { full_name: fullName, designation },
+    }),
+  });
+  const payload = await parseResponse(response);
+  if (payload.access_token) setSession(payload);
+  return payload;
+}
+
+export async function refreshSession(session) {
+  if (!session?.refresh_token) return null;
+  const response = await fetch(`${CONFIG.supabaseUrl}/auth/v1/token?grant_type=refresh_token`, {
+    method: "POST",
+    headers: {
+      apikey: CONFIG.supabasePublishableKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ refresh_token: session.refresh_token }),
+  });
+  const refreshed = await parseResponse(response);
+  setSession(refreshed);
+  return refreshed;
+}
+
+export async function ensureSession() {
+  let session = getSession();
+  if (!session) return null;
+  const expiresAtMs = (session.expires_at || 0) * 1000;
+  if (expiresAtMs && expiresAtMs - Date.now() < 60_000) {
+    try {
+      session = await refreshSession(session);
+    } catch {
+      setSession(null);
+      return null;
+    }
+  }
+  return session;
+}
+
+export async function signOut() {
+  const session = getSession();
+  if (session?.access_token) {
+    await fetch(`${CONFIG.supabaseUrl}/auth/v1/logout`, {
+      method: "POST",
+      headers: authHeaders(session.access_token),
+    }).catch(() => null);
+  }
+  setSession(null);
+}
+
+async function rest(path, options = {}) {
+  const session = await ensureSession();
+  if (!session?.access_token) throw new Error("Your session has expired. Please log in again.");
+  const response = await fetch(`${CONFIG.supabaseUrl}/rest/v1/${path}`, {
+    ...options,
+    headers: {
+      ...authHeaders(session.access_token),
+      ...(options.headers || {}),
+    },
+  });
+  return parseResponse(response);
+}
+
+export async function getProfile() {
+  const session = await ensureSession();
+  const userId = session?.user?.id;
+  if (!userId) return null;
+  const rows = await rest(`profiles?id=eq.${encodeURIComponent(userId)}&select=id,full_name,designation,role,office_id,office_name`);
+  return rows[0] || null;
+}
+
+function getProjects() {
+  return rest("v_project_register?select=*&order=updated_at.desc");
+}
+
+export async function getProject(id) {
+  const rows = await rest(`v_project_register?id=eq.${encodeURIComponent(id)}&select=*`);
+  return rows[0] || null;
+}
+
+function getHighways() {
+  return rest("highways?select=id,highway_number,highway_name&order=highway_number.asc");
+}
+
+function getOffices() {
+  return rest("offices?select=id,name,office_type&order=name.asc");
+}
+
+export async function createProject(payload) {
+  const session = await ensureSession();
+  const data = {
+    ...payload,
+    created_by: session?.user?.id || null,
+  };
+  const response = await rest("projects", {
+    method: "POST",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify(data),
+  });
+  return response[0] || null;
+}
+
+
+const root = document.querySelector("#app");
+const state = {
+  session: null,
+  profile: null,
+  projects: [],
+  highways: [],
+  offices: [],
+  demo: new URLSearchParams(location.search).get("demo") === "1",
+  loading: true,
+  filters: { query: "", highway: "all", status: "all", office: "all" },
+};
+
+function escapeHtml(value = "") {
+  return String(value).replace(/[&<>'"]/g, (char) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;",
+  })[char]);
+}
+
+function formatDate(value) {
+  if (!value) return "—";
+  return new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
+}
+
+function formatMoneyCrore(value) {
+  if (value === null || value === undefined || value === "") return "—";
+  return `₹${new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(Number(value))} crore`;
+}
+
+function healthClass(label) {
+  const normalized = (label || "").toLowerCase();
+  if (normalized.includes("healthy") || normalized.includes("completed")) return "healthy";
+  if (normalized.includes("delay") || normalized.includes("critical")) return "delayed";
+  if (normalized.includes("attention") || normalized.includes("pending")) return "attention";
+  if (normalized.includes("draft") || normalized.includes("not started")) return "draft";
+  return "progress";
+}
+
+function showToast(message, type = "success") {
+  document.querySelector(".toast")?.remove();
+  const toast = document.createElement("div");
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add("visible"));
+  setTimeout(() => {
+    toast.classList.remove("visible");
+    setTimeout(() => toast.remove(), 250);
+  }, 3200);
+}
+
+function setButtonLoading(button, loading, label = "Please wait...") {
+  if (!button) return;
+  if (loading) {
+    button.dataset.original = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = `<span class="spinner"></span>${label}`;
+  } else {
+    button.disabled = false;
+    button.innerHTML = button.dataset.original || button.innerHTML;
+  }
+}
+
+function loginTemplate() {
+  return `
+    <main class="auth-page">
+      <section class="auth-brand-panel">
+        <div class="brand-lockup auth-brand">
+          <div class="emblem">NH</div>
+          <div><strong>${CONFIG.appName}</strong><span>National Highway Division, Dhule</span></div>
+        </div>
+        <div class="auth-intro">
+          <p class="eyebrow">Digital National Highway Office</p>
+          <h1>Project administration, correspondence and field monitoring—together.</h1>
+          <p>MARGDARSHI gives highway engineers a single, secure workspace for projects, actions, inspections, documents and review readiness.</p>
+          <div class="auth-feature-grid">
+            <div>${icon("projects", 22)}<span>Project workspaces</span></div>
+            <div>${icon("mail", 22)}<span>Action tracking</span></div>
+            <div>${icon("inspection", 22)}<span>Field inspections</span></div>
+            <div>${icon("reports", 22)}<span>Review reports</span></div>
+          </div>
+        </div>
+        <p class="auth-department">Public Works Department · National Highway Wing</p>
+      </section>
+
+      <section class="auth-form-panel">
+        <div class="auth-card">
+          <div class="auth-card-heading">
+            <div class="mobile-brand"><div class="emblem">NH</div><strong>MARGDARSHI</strong></div>
+            <p class="eyebrow">Secure access</p>
+            <h2>Welcome back</h2>
+            <p>Sign in with your approved MARGDARSHI account.</p>
+          </div>
+          <form id="login-form" novalidate>
+            <label>Email address<input id="login-email" type="email" autocomplete="email" placeholder="name@mahapwd.gov.in" required /></label>
+            <label>Password<input id="login-password" type="password" autocomplete="current-password" placeholder="Enter your password" minlength="6" required /></label>
+            <p id="login-error" class="form-error" role="alert"></p>
+            <button class="btn primary full" id="login-button" type="submit">Sign in</button>
+          </form>
+          <div class="auth-divider"><span>First-time setup</span></div>
+          <button class="btn secondary full" id="open-signup" type="button">Create an account</button>
+          <button class="preview-link" id="preview-button" type="button">Preview the approved interface</button>
+          <p class="auth-security">Access is protected by Supabase authentication and row-level security.</p>
+        </div>
+      </section>
+    </main>
+    <dialog id="signup-dialog" class="modal compact-modal">
+      <form id="signup-form" method="dialog" class="modal-card" novalidate>
+        <div class="modal-heading"><div><p class="eyebrow">Initial access</p><h2>Create account</h2><p>Your account will require administrator approval for editing rights.</p></div><button class="icon-button" value="cancel" aria-label="Close">${icon("close")}</button></div>
+        <div class="form-grid single">
+          <label>Full name<input id="signup-name" required placeholder="Your full name" /></label>
+          <label>Designation<input id="signup-designation" required placeholder="e.g. Sectional Engineer" /></label>
+          <label>Email address<input id="signup-email" type="email" required placeholder="Official email address" /></label>
+          <label>Password<input id="signup-password" type="password" required minlength="8" placeholder="Minimum 8 characters" /></label>
+        </div>
+        <p id="signup-error" class="form-error"></p>
+        <div class="modal-actions"><button class="btn secondary" value="cancel">Cancel</button><button class="btn primary" id="signup-button" type="submit">Create account</button></div>
+      </form>
+    </dialog>`;
+}
+
+function sidebar(active = "projects") {
+  const items = [
+    ["dashboard", "dashboard", "Dashboard"],
+    ["projects", "projects", "Project Register"],
+    ["mail", "correspondence", "Correspondence"],
+    ["calendar", "calendar", "Calendar"],
+    ["reports", "reports", "Reports"],
+    ["settings", "admin", "Administration"],
+  ];
+  return `<aside class="sidebar">
+    <nav>${items.map(([ic, key, label]) => `<button class="nav-item ${active === key ? "active" : ""}" data-nav="${key}">${icon(ic)}<span>${label}</span>${key === "admin" ? icon("arrow", 16) : ""}</button>`).join("")}</nav>
+    <div class="sidebar-footer"><div class="road-mark">NH</div><strong>National Highway Wing</strong><span>Building safer, better highways</span></div>
+  </aside>`;
+}
+
+function appHeader() {
+  const name = escapeHtml(state.profile?.full_name || "MARGDARSHI User");
+  const designation = escapeHtml(state.profile?.designation || "Authorised User");
+  const initials = name.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
+  return `<header class="topbar">
+    <div class="brand-lockup"><div class="emblem">NH</div><div><strong>MARGDARSHI</strong><span>National Highway Division Dhule</span></div></div>
+    <div class="global-search">${icon("search", 19)}<input aria-label="Global search" placeholder="Search projects, letters, cases..." /><kbd>Ctrl K</kbd></div>
+    <div class="topbar-actions"><button class="notification-button" aria-label="Notifications">${icon("bell")}<span>3</span></button><div class="user-menu"><div class="avatar">${initials}</div><div><strong>${name}</strong><span>${designation}</span></div></div><button class="icon-button" id="logout-button" title="Sign out">${icon("logout")}</button></div>
+  </header>`;
+}
+
+function projectMetrics(projects) {
+  const construction = projects.filter((p) => p.status === "construction").length;
+  const pending = projects.reduce((sum, p) => sum + Number(p.pending_actions_count || 0), 0);
+  const completed = projects.filter((p) => ["completed", "closed", "maintenance"].includes(p.status)).length;
+  return [
+    ["folder", "Total Projects", projects.length, "blue"],
+    ["construction", "Under Construction", construction, "teal"],
+    ["clipboard", "Pending Actions", pending, "amber"],
+    ["check", "Completed / Maintenance", completed, "green"],
+  ];
+}
+
+function filteredProjects() {
+  const { query, highway, status, office } = state.filters;
+  return state.projects.filter((project) => {
+    const searchText = `${project.project_name} ${project.project_code || ""} ${project.highway_number || ""}`.toLowerCase();
+    return (!query || searchText.includes(query.toLowerCase()))
+      && (highway === "all" || project.highway_number === highway)
+      && (status === "all" || project.status === status)
+      && (office === "all" || project.implementing_office_name === office);
+  });
+}
+
+function progressBar(value) {
+  const percentage = Math.min(100, Math.max(0, Number(value || 0)));
+  return `<div class="progress-cell"><strong>${percentage.toFixed(0)}%</strong><div class="progress-track"><span style="width:${percentage}%"></span></div></div>`;
+}
+
+function projectRows(projects) {
+  if (!projects.length) {
+    return `<div class="empty-state">${icon("projects", 42)}<h3>No matching projects</h3><p>Adjust the filters or add a new project.</p></div>`;
+  }
+  return `<div class="table-scroll"><table class="data-table"><thead><tr><th>Project</th><th>Highway</th><th>Stage</th><th>Progress</th><th>Health</th><th>Updated</th><th></th></tr></thead><tbody>${projects.map((project) => `
+    <tr data-project-id="${project.id}" tabindex="0">
+      <td><strong>${escapeHtml(project.project_name)}</strong><span>${escapeHtml(project.project_code || project.description || "")}</span></td>
+      <td>${escapeHtml(project.highway_number || "—")}</td>
+      <td><strong>${escapeHtml(project.status_label || project.status)}</strong><span>${escapeHtml(project.mode || "")}</span></td>
+      <td>${progressBar(project.physical_progress_pct)}</td>
+      <td><span class="status-badge ${healthClass(project.health_label)}"><i></i>${escapeHtml(project.health_label || "In Progress")}</span></td>
+      <td><strong>${formatDate(project.updated_at)}</strong><span>${escapeHtml(state.profile?.full_name || "MARGDARSHI")}</span></td>
+      <td><button class="icon-button row-menu" aria-label="Project actions">${icon("menu")}</button></td>
+    </tr>`).join("")}</tbody></table></div>`;
+}
+
+function projectRegisterTemplate() {
+  const projects = filteredProjects();
+  const metrics = projectMetrics(state.projects);
+  const highwayOptions = [...new Set(state.projects.map((p) => p.highway_number).filter(Boolean))].sort();
+  const officeOptions = [...new Set(state.projects.map((p) => p.implementing_office_name).filter(Boolean))].sort();
+  const canEdit = ["admin", "editor"].includes(state.profile?.role);
+  return `<div class="app-shell">${appHeader()}${sidebar("projects")}
+    <main class="main-content register-page">
+      <section class="content-column">
+        <div class="breadcrumb"><span>Dashboard</span><b>/</b>Project Register</div>
+        <div class="page-heading"><div><h1>Project Register</h1><p>View and manage projects under National Highway Division Dhule.</p></div>${canEdit ? `<button class="btn primary" id="add-project-button">${icon("plus")}Add Project</button>` : ""}</div>
+        <div class="filter-card">
+          <div class="search-input">${icon("search", 18)}<input id="project-search" value="${escapeHtml(state.filters.query)}" placeholder="Search projects..." /></div>
+          <label class="select-field"><span>Highway</span><select id="highway-filter"><option value="all">All</option>${highwayOptions.map((v) => `<option ${state.filters.highway === v ? "selected" : ""}>${escapeHtml(v)}</option>`).join("")}</select></label>
+          <label class="select-field"><span>Status</span><select id="status-filter"><option value="all">All</option>${[["planning","Planning"],["tender","Tender"],["awarded","Awarded"],["construction","Under Construction"],["maintenance","Maintenance"],["completed","Completed"],["held","On Hold"],["closed","Closed"]].map(([v,l]) => `<option value="${v}" ${state.filters.status === v ? "selected" : ""}>${l}</option>`).join("")}</select></label>
+          <label class="select-field"><span>Office</span><select id="office-filter"><option value="all">All</option>${officeOptions.map((v) => `<option ${state.filters.office === v ? "selected" : ""}>${escapeHtml(v)}</option>`).join("")}</select></label>
+          <button class="btn reset" id="reset-filters">${icon("reset", 18)}Reset</button>
+        </div>
+        <section class="table-card" id="project-table">${projectRows(projects)}<div class="table-footer">Showing ${projects.length} of ${state.projects.length} projects</div></section>
+      </section>
+      <aside class="insights-column">
+        <section class="insight-card"><h2>Overview</h2>${metrics.map(([ic,label,value,tone]) => `<div class="metric-row"><div class="metric-icon ${tone}">${icon(ic)}</div><div><span>${label}</span><strong>${value}</strong></div></div>`).join("")}</section>
+        <section class="insight-card"><div class="card-title-row"><h2>Pending Actions</h2><button>View all</button></div>${[["Land Acquisition",5,"amber"],["Contractor Submissions",4,"orange"],["Utility Clearances",3,"blue"],["Court / Legal",2,"red"],["Measurements",2,"teal"]].map(([label,count,tone]) => `<div class="action-row"><span><i class="dot ${tone}"></i>${label}</span><b>${count}</b>${icon("arrow",16)}</div>`).join("")}</section>
+        ${state.demo ? `<section class="demo-banner"><strong>Preview mode</strong><p>This screen uses sample project data. Sign in to view the live Supabase database.</p><a href="./">Return to login</a></section>` : ""}
+      </aside>
+    </main>
+    ${addProjectDialog()}
+  </div>`;
+}
+
+function addProjectDialog() {
+  return `<dialog id="project-dialog" class="modal">
+    <form id="project-form" method="dialog" class="modal-card" novalidate>
+      <div class="modal-heading"><div><p class="eyebrow">Project Register</p><h2>Add Project</h2><p>Create the basic record now; remaining details can be added later.</p></div><button class="icon-button" value="cancel" aria-label="Close">${icon("close")}</button></div>
+      <div class="form-section"><h3>Basic information</h3><div class="form-grid">
+        <label class="wide">Project name *<input id="project-name" required placeholder="e.g. NH-753B Package-2: Nandurbar–Taloda" /></label>
+        <label>Project code<input id="project-code" placeholder="e.g. NH753B-PKG2" /></label>
+        <label>Mode<select id="project-mode"><option value="">Select</option>${["EPC","HAM","BOT","PBMC","STMC","DPR","Other"].map(v=>`<option>${v}</option>`).join("")}</select></label>
+        <label>Highway *<select id="project-highway" required><option value="">Select highway</option>${state.highways.map(h=>`<option value="${h.id}">${escapeHtml(h.highway_number)}${h.highway_name ? ` — ${escapeHtml(h.highway_name)}` : ""}</option>`).join("")}</select></label>
+        <label>Implementing office *<select id="project-office" required><option value="">Select office</option>${state.offices.map(o=>`<option value="${o.id}">${escapeHtml(o.name)}</option>`).join("")}</select></label>
+        <label>Status *<select id="project-status" required><option value="planning">Planning</option><option value="tender">Tender</option><option value="awarded">Awarded</option><option value="construction">Under Construction</option><option value="maintenance">Maintenance</option><option value="completed">Completed</option><option value="held">On Hold</option><option value="closed">Closed</option></select></label>
+      </div></div>
+      <div class="form-section"><h3>Project details</h3><div class="form-grid">
+        <label>Start chainage (km)<input id="project-start-chainage" type="number" min="0" step="0.001" /></label>
+        <label>End chainage (km)<input id="project-end-chainage" type="number" min="0" step="0.001" /></label>
+        <label>Sanctioned cost (₹ crore)<input id="project-cost" type="number" min="0" step="0.01" /></label>
+        <label>Scheduled completion<input id="project-completion" type="date" /></label>
+        <label class="wide">Description<textarea id="project-description" rows="3" placeholder="Brief scope and important context"></textarea></label>
+      </div></div>
+      <p id="project-error" class="form-error"></p>
+      <div class="modal-actions"><button class="btn secondary" value="cancel">Cancel</button><button class="btn primary" id="save-project-button" type="submit">Save Project</button></div>
+    </form>
+  </dialog>`;
+}
+
+function workspaceTemplate(project) {
+  if (!project) return `<div class="app-shell">${appHeader()}${sidebar("projects")}<main class="main-content"><div class="empty-state"><h2>Project not found</h2><button class="btn primary" id="back-to-register">Back to Project Register</button></div></main></div>`;
+  return `<div class="app-shell">${appHeader()}${sidebar("projects")}
+    <main class="main-content workspace-page">
+      <section class="workspace-header">
+        <button class="back-link" id="back-to-register">${icon("back",18)}Project Register</button>
+        <div class="workspace-title-row"><div><div class="workspace-meta"><span>${escapeHtml(project.highway_number || "National Highway")}</span><b>·</b><span>${escapeHtml(project.mode || "Project")}</span><b>·</b><span>${escapeHtml(project.status_label || project.status)}</span></div><h1>${escapeHtml(project.project_name)}</h1><p>${escapeHtml(project.description || "Project workspace for administration, monitoring and review readiness.")}</p></div><span class="status-badge ${healthClass(project.health_label)} large"><i></i>${escapeHtml(project.health_label || "In Progress")}</span></div>
+        <div class="workspace-stat-grid">
+          <div><span>Physical progress</span><strong>${Number(project.physical_progress_pct || 0).toFixed(0)}%</strong>${progressBar(project.physical_progress_pct)}</div>
+          <div><span>Financial progress</span><strong>${Number(project.financial_progress_pct || 0).toFixed(0)}%</strong>${progressBar(project.financial_progress_pct)}</div>
+          <div><span>Sanctioned cost</span><strong>${formatMoneyCrore(project.sanctioned_cost_crore)}</strong><small>Project value</small></div>
+          <div><span>Pending actions</span><strong>${Number(project.pending_actions_count || 0)}</strong><small>Items requiring attention</small></div>
+        </div>
+      </section>
+      <section class="workspace-body">
+        <nav class="tabs" role="tablist">${[["overview","Overview","dashboard"],["correspondence","Correspondence","mail"],["inspections","Inspections","inspection"],["documents","Documents","document"],["timeline","Timeline","timeline"]].map(([key,label,ic],i)=>`<button class="tab ${i===0?"active":""}" data-tab="${key}">${icon(ic,18)}${label}</button>`).join("")}</nav>
+        <div id="workspace-tab-content" class="tab-content">${workspaceOverview(project)}</div>
+      </section>
+    </main>
+  </div>`;
+}
+
+function workspaceOverview(project) {
+  return `<div class="overview-layout"><section class="panel"><div class="panel-heading"><h2>Project overview</h2><button class="text-button">Edit details</button></div><dl class="detail-list">
+    <div><dt>Project code</dt><dd>${escapeHtml(project.project_code || "—")}</dd></div><div><dt>Highway</dt><dd>${escapeHtml(project.highway_number || "—")}</dd></div><div><dt>Mode</dt><dd>${escapeHtml(project.mode || "—")}</dd></div><div><dt>Implementing office</dt><dd>${escapeHtml(project.implementing_office_name || "—")}</dd></div><div><dt>Start chainage</dt><dd>${project.start_chainage_km ?? "—"}</dd></div><div><dt>End chainage</dt><dd>${project.end_chainage_km ?? "—"}</dd></div><div><dt>Scheduled completion</dt><dd>${formatDate(project.scheduled_completion_date)}</dd></div><div><dt>Last updated</dt><dd>${formatDate(project.updated_at)}</dd></div>
+  </dl></section><aside class="panel"><div class="panel-heading"><h2>Immediate attention</h2></div><div class="attention-list"><div><i class="dot amber"></i><span><strong>Land acquisition review</strong><small>Update village-wise readiness and possession.</small></span></div><div><i class="dot blue"></i><span><strong>Latest correspondence</strong><small>Check replies due to higher offices.</small></span></div><div><i class="dot teal"></i><span><strong>Progress update</strong><small>Record the latest physical and financial status.</small></span></div></div></aside></div>`;
+}
+
+function emptyModule(title, description, iconName) {
+  return `<div class="module-empty">${icon(iconName,42)}<h2>${title}</h2><p>${description}</p><button class="btn primary">Add first record</button></div>`;
+}
+
+async function renderWorkspace(projectId) {
+  root.innerHTML = `<div class="loading-screen"><span class="spinner dark"></span><p>Opening project workspace...</p></div>`;
+  let project;
+  if (state.demo) project = state.projects.find((item) => item.id === projectId);
+  else {
+    try { project = await getProject(projectId); }
+    catch (error) { showToast(error.message, "error"); }
+  }
+  root.innerHTML = workspaceTemplate(project);
+  bindCommonEvents();
+  document.querySelector("#back-to-register")?.addEventListener("click", () => { location.hash = "#projects"; });
+  document.querySelectorAll(".tab").forEach((button) => button.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach((tab) => tab.classList.remove("active"));
+    button.classList.add("active");
+    const target = document.querySelector("#workspace-tab-content");
+    const key = button.dataset.tab;
+    target.innerHTML = key === "overview" ? workspaceOverview(project)
+      : key === "correspondence" ? emptyModule("No correspondence recorded", "Incoming and outgoing letters for this project will appear here.", "mail")
+      : key === "inspections" ? emptyModule("No inspections recorded", "Create site inspections with observations, instructions and photographs.", "inspection")
+      : key === "documents" ? emptyModule("No documents uploaded", "Store agreements, approvals, drawings, reports and orders in this workspace.", "document")
+      : emptyModule("Project timeline", "Milestones and key events will be shown chronologically here.", "timeline");
+  }));
+}
+
+function bindCommonEvents() {
+  document.querySelector("#logout-button")?.addEventListener("click", async () => {
+    if (state.demo) { location.href = "./"; return; }
+    await signOut();
+    location.hash = "";
+    await init();
+  });
+  document.querySelectorAll("[data-nav='projects']").forEach((button) => button.addEventListener("click", () => { location.hash = "#projects"; }));
+  document.querySelectorAll(".nav-item:not([data-nav='projects'])").forEach((button) => button.addEventListener("click", () => showToast(`${button.textContent.trim()} will be activated in the next module.`, "info")));
+}
+
+function bindRegisterEvents() {
+  bindCommonEvents();
+  const rerenderRows = () => {
+    document.querySelector("#project-table").innerHTML = `${projectRows(filteredProjects())}<div class="table-footer">Showing ${filteredProjects().length} of ${state.projects.length} projects</div>`;
+    bindRowEvents();
+  };
+  document.querySelector("#project-search")?.addEventListener("input", (event) => { state.filters.query = event.target.value; rerenderRows(); });
+  document.querySelector("#highway-filter")?.addEventListener("change", (event) => { state.filters.highway = event.target.value; rerenderRows(); });
+  document.querySelector("#status-filter")?.addEventListener("change", (event) => { state.filters.status = event.target.value; rerenderRows(); });
+  document.querySelector("#office-filter")?.addEventListener("change", (event) => { state.filters.office = event.target.value; rerenderRows(); });
+  document.querySelector("#reset-filters")?.addEventListener("click", () => {
+    state.filters = { query: "", highway: "all", status: "all", office: "all" };
+    renderRegister();
+  });
+  document.querySelector("#add-project-button")?.addEventListener("click", () => document.querySelector("#project-dialog").showModal());
+  document.querySelector("#project-form")?.addEventListener("submit", handleCreateProject);
+  bindRowEvents();
+}
+
+function bindRowEvents() {
+  document.querySelectorAll("tr[data-project-id]").forEach((row) => {
+    const open = (event) => {
+      if (event.target.closest("button")) return;
+      location.hash = `#project/${row.dataset.projectId}`;
+    };
+    row.addEventListener("click", open);
+    row.addEventListener("keydown", (event) => { if (event.key === "Enter") open(event); });
+  });
+}
+
+async function handleCreateProject(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  if (!form.checkValidity()) { form.reportValidity(); return; }
+  const button = document.querySelector("#save-project-button");
+  const error = document.querySelector("#project-error");
+  setButtonLoading(button, true, "Saving...");
+  error.textContent = "";
+  try {
+    const valueOrNull = (id) => document.querySelector(id)?.value?.trim() || null;
+    await createProject({
+      project_name: valueOrNull("#project-name"), project_code: valueOrNull("#project-code"), mode: valueOrNull("#project-mode"),
+      highway_id: valueOrNull("#project-highway"), implementing_office_id: valueOrNull("#project-office"), status: valueOrNull("#project-status"),
+      start_chainage_km: valueOrNull("#project-start-chainage"), end_chainage_km: valueOrNull("#project-end-chainage"),
+      sanctioned_cost_crore: valueOrNull("#project-cost"), scheduled_completion_date: valueOrNull("#project-completion"), description: valueOrNull("#project-description"),
+    });
+    document.querySelector("#project-dialog").close();
+    state.projects = await getProjects();
+    renderRegister();
+    showToast(`Project “${valueOrNull("#project-name") || "New project"}” was created successfully.`);
+  } catch (err) {
+    error.textContent = err.message;
+  } finally { setButtonLoading(button, false); }
+}
+
+function renderRegister() {
+  root.innerHTML = projectRegisterTemplate();
+  bindRegisterEvents();
+}
+
+function bindLoginEvents() {
+  const form = document.querySelector("#login-form");
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!form.checkValidity()) { form.reportValidity(); return; }
+    const button = document.querySelector("#login-button");
+    const error = document.querySelector("#login-error");
+    setButtonLoading(button, true, "Signing in...");
+    error.textContent = "";
+    try {
+      state.session = await signIn(document.querySelector("#login-email").value.trim(), document.querySelector("#login-password").value);
+      await loadAuthenticatedData();
+      location.hash = "#projects";
+      renderRegister();
+    } catch (err) { error.textContent = err.message; }
+    finally { setButtonLoading(button, false); }
+  });
+  const signupDialog = document.querySelector("#signup-dialog");
+  document.querySelector("#open-signup").addEventListener("click", () => signupDialog.showModal());
+  document.querySelector("#signup-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const formElement = event.currentTarget;
+    if (!formElement.checkValidity()) { formElement.reportValidity(); return; }
+    const button = document.querySelector("#signup-button");
+    const error = document.querySelector("#signup-error");
+    setButtonLoading(button, true, "Creating..."); error.textContent = "";
+    try {
+      const result = await signUp({ email: document.querySelector("#signup-email").value.trim(), password: document.querySelector("#signup-password").value, fullName: document.querySelector("#signup-name").value.trim(), designation: document.querySelector("#signup-designation").value.trim() });
+      signupDialog.close();
+      showToast(result.access_token ? "Account created and signed in." : "Account created. Check your email if confirmation is required.");
+      if (result.access_token) { await loadAuthenticatedData(); location.hash = "#projects"; renderRegister(); }
+    } catch (err) { error.textContent = err.message; }
+    finally { setButtonLoading(button, false); }
+  });
+  document.querySelector("#preview-button").addEventListener("click", () => { location.href = "./?demo=1#projects"; });
+}
+
+async function loadAuthenticatedData() {
+  [state.profile, state.projects, state.highways, state.offices] = await Promise.all([getProfile(), getProjects(), getHighways(), getOffices()]);
+}
+
+async function route() {
+  const hash = location.hash || "#projects";
+  const match = hash.match(/^#project\/(.+)$/);
+  if (match) return renderWorkspace(match[1]);
+  renderRegister();
+}
+
+async function init() {
+  root.innerHTML = `<div class="loading-screen"><span class="spinner dark"></span><p>Loading MARGDARSHI...</p></div>`;
+  if (state.demo) {
+    state.profile = DEMO_PROFILE;
+    state.projects = DEMO_PROJECTS;
+    state.highways = [];
+    state.offices = [];
+    state.loading = false;
+    return route();
+  }
+  state.session = await ensureSession();
+  if (!state.session) {
+    root.innerHTML = loginTemplate();
+    bindLoginEvents();
+    return;
+  }
+  try {
+    await loadAuthenticatedData();
+    state.loading = false;
+    route();
+  } catch (error) {
+    root.innerHTML = loginTemplate();
+    bindLoginEvents();
+    document.querySelector("#login-error").textContent = error.message;
+  }
+}
+
+window.addEventListener("hashchange", () => { if (state.session || state.demo) route(); });
+init();
+
+</script>
+</body>
+</html>
