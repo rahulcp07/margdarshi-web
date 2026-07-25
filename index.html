@@ -195,6 +195,10 @@ h1, h2, h3, p { overflow-wrap: anywhere; }
 .correspondence-side strong, .correspondence-side span { display: block; }
 .correspondence-side span { margin-top: 5px; color: var(--muted); font-size: 10px; }
 .correspondence-side .btn { margin-top: 12px; }
+.attachment-help { display: block; margin-top: 6px; color: var(--muted); font-size: 10px; font-weight: 400; line-height: 1.45; }
+.attachment-actions { display: flex; justify-content: flex-end; gap: 7px; flex-wrap: wrap; margin-top: 10px; }
+.file-selected { color: var(--primary); font-weight: 600; }
+
 .module-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 18px; }
 .module-header h2 { margin: 0; font-size: 20px; }
 .module-header p { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
@@ -513,9 +517,106 @@ async function updateDirectoryEntity(id, payload) {
   return rows[0] || null;
 }
 
+
+const CORRESPONDENCE_BUCKET = "correspondence-attachments";
+const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+const ALLOWED_ATTACHMENT_TYPES = new Set(["application/pdf", "image/jpeg", "image/png", "image/webp"]);
+
+function safeStorageFilename(filename) {
+  const dot = filename.lastIndexOf(".");
+  const base = (dot > 0 ? filename.slice(0, dot) : filename)
+    .normalize("NFKD")
+    .replace(/[^\w.-]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 80) || "attachment";
+  const ext = dot > 0 ? filename.slice(dot).toLowerCase().replace(/[^a-z0-9.]/g, "") : "";
+  return `${base}${ext}`;
+}
+
+function validateCorrespondenceAttachment(file) {
+  if (!file) return;
+  if (!ALLOWED_ATTACHMENT_TYPES.has(file.type)) {
+    throw new Error("Only PDF, JPG, PNG and WEBP files are allowed.");
+  }
+  if (file.size > MAX_ATTACHMENT_BYTES) {
+    throw new Error("Attachment must not exceed 10 MB.");
+  }
+}
+
+async function uploadCorrespondenceAttachment(file, projectId, correspondenceId) {
+  validateCorrespondenceAttachment(file);
+  const session = await ensureSession();
+  if (!session?.access_token) throw new Error("Your session has expired. Please log in again.");
+  const filename = safeStorageFilename(file.name);
+  const path = `${projectId}/${correspondenceId}/${Date.now()}-${filename}`;
+  const response = await fetch(`${CONFIG.supabaseUrl}/storage/v1/object/${CORRESPONDENCE_BUCKET}/${encodeURI(path)}`, {
+    method: "POST",
+    headers: {
+      apikey: CONFIG.supabasePublishableKey,
+      Authorization: `Bearer ${session.access_token}`,
+      "Content-Type": file.type,
+      "x-upsert": "false",
+      "cache-control": "3600",
+    },
+    body: file,
+  });
+  if (!response.ok) {
+    let message = "Attachment upload failed.";
+    try {
+      const result = await response.json();
+      message = result.message || result.error || message;
+    } catch {}
+    throw new Error(message);
+  }
+  return {
+    attachment_path: path,
+    attachment_name: file.name,
+    attachment_size_bytes: file.size,
+    attachment_mime_type: file.type,
+  };
+}
+
+async function openCorrespondenceAttachment(record) {
+  if (!record?.attachment_path) return;
+  const session = await ensureSession();
+  if (!session?.access_token) throw new Error("Your session has expired. Please log in again.");
+  const response = await fetch(`${CONFIG.supabaseUrl}/storage/v1/object/authenticated/${CORRESPONDENCE_BUCKET}/${encodeURI(record.attachment_path)}`, {
+    headers: {
+      apikey: CONFIG.supabasePublishableKey,
+      Authorization: `Bearer ${session.access_token}`,
+    },
+  });
+  if (!response.ok) {
+    let message = "Unable to open attachment.";
+    try {
+      const result = await response.json();
+      message = result.message || result.error || message;
+    } catch {}
+    throw new Error(message);
+  }
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const opened = window.open(url, "_blank", "noopener,noreferrer");
+  if (!opened) {
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = record.attachment_name || "attachment";
+    link.click();
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 60000);
+}
+
+function formatFileSize(bytes) {
+  const value = Number(bytes || 0);
+  if (!value) return "";
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(0)} KB`;
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function getCorrespondence(projectId = null) {
   const projectFilter = projectId ? `&project_id=eq.${encodeURIComponent(projectId)}` : "";
-  return rest(`correspondence?select=id,project_id,letter_number,letter_date,direction,from_party,to_party,subject,action_required,due_date,status,document_url,remarks,created_by,created_at,received_or_sent_date,reference_details,priority,attachment_name,updated_at&order=letter_date.desc,created_at.desc${projectFilter}`);
+  return rest(`correspondence?select=id,project_id,letter_number,letter_date,direction,from_party,to_party,subject,action_required,due_date,status,document_url,remarks,created_by,created_at,received_or_sent_date,reference_details,priority,attachment_name,attachment_path,attachment_size_bytes,attachment_mime_type,updated_at&order=letter_date.desc,created_at.desc${projectFilter}`);
 }
 
 async function createCorrespondence(payload) {
@@ -1249,8 +1350,12 @@ function correspondenceList(records, projectMap = true) {
       </div>
       <div class="correspondence-side">
         <strong>${item.attachment_name ? escapeHtml(item.attachment_name) : "No attachment"}</strong>
+        ${item.attachment_size_bytes ? `<span>${formatFileSize(item.attachment_size_bytes)} · ${escapeHtml(item.attachment_mime_type || "file")}</span>` : ""}
         <span>Updated ${formatDate(item.updated_at || item.created_at)}</span>
-        ${["admin","editor"].includes(state.profile?.role) ? `<button class="btn secondary edit-correspondence-button" data-id="${item.id}">Update status</button>` : ""}
+        <div class="attachment-actions">
+          ${item.attachment_path ? `<button class="btn secondary open-attachment-button" data-id="${item.id}">Open attachment</button>` : ""}
+          ${["admin","editor"].includes(state.profile?.role) ? `<button class="btn secondary edit-correspondence-button" data-id="${item.id}">Update status</button>` : ""}
+        </div>
       </div>
     </article>`;
   }).join("")}</div>`;
@@ -1329,7 +1434,10 @@ function correspondenceDialog(projectId = "") {
         <label class="wide">Action required<textarea id="corr-action" rows="2" placeholder="Action to be taken"></textarea></label>
         <label>Due date<input id="corr-due-date" type="date" /></label>
         <label>Status<select id="corr-status"><option value="open">Open</option><option value="under_review">Under Review</option><option value="replied">Replied</option><option value="closed">Closed</option><option value="no_action">No Action</option></select></label>
-        <label>Attachment name<input id="corr-attachment-name" placeholder="e.g. Letter No. 123.pdf" /></label>
+        <label class="wide">Attachment
+          <input id="corr-attachment-file" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" />
+          <span class="attachment-help">Optional. PDF, JPG, PNG or WEBP only; maximum 10 MB. Files are stored privately and require an approved login to open.</span>
+        </label>
         <label class="wide">Remarks<textarea id="corr-remarks" rows="2"></textarea></label>
       </div></div>
       <p id="correspondence-error" class="form-error"></p>
@@ -1371,6 +1479,18 @@ async function renderGlobalCorrespondence() {
 
 function bindCorrespondenceDialogEvents(onSaved) {
   bindOtherOfficeFields();
+  const fileInput = document.querySelector("#corr-attachment-file");
+  fileInput?.addEventListener("change", () => {
+    const file = fileInput.files?.[0];
+    try {
+      validateCorrespondenceAttachment(file);
+      fileInput.setCustomValidity("");
+    } catch (error) {
+      fileInput.value = "";
+      fileInput.setCustomValidity(error.message);
+      fileInput.reportValidity();
+    }
+  });
   const form = document.querySelector("#correspondence-form");
   form?.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -1380,7 +1500,7 @@ function bindCorrespondenceDialogEvents(onSaved) {
     const value = (id) => document.querySelector(id)?.value?.trim() || null;
     setButtonLoading(button, true, "Saving..."); error.textContent = "";
     try {
-      await createCorrespondence({
+      const created = await createCorrespondence({
         project_id: value("#corr-project"),
         direction: value("#corr-direction"),
         letter_number: value("#corr-number"),
@@ -1394,11 +1514,15 @@ function bindCorrespondenceDialogEvents(onSaved) {
         action_required: value("#corr-action"),
         due_date: value("#corr-due-date"),
         status: value("#corr-status") || "open",
-        attachment_name: value("#corr-attachment-name"),
         remarks: value("#corr-remarks"),
       });
+      const file = document.querySelector("#corr-attachment-file")?.files?.[0] || null;
+      if (file) {
+        const attachment = await uploadCorrespondenceAttachment(file, created.project_id, created.id);
+        await updateCorrespondence(created.id, attachment);
+      }
       document.querySelector("#correspondence-dialog").close();
-      showToast("Correspondence saved.");
+      showToast(file ? "Correspondence and attachment saved." : "Correspondence saved.");
       await onSaved();
     } catch (err) { error.textContent = err.message; }
     finally { setButtonLoading(button, false); }
@@ -1413,6 +1537,14 @@ function bindGlobalCorrespondenceEvents() {
 }
 
 function bindCorrespondenceStatusButtons(onSaved) {
+  document.querySelectorAll(".open-attachment-button").forEach((button) => button.addEventListener("click", async () => {
+    const record = state.correspondence.find((item) => item.id === button.dataset.id);
+    if (!record) return;
+    setButtonLoading(button, true, "Opening...");
+    try { await openCorrespondenceAttachment(record); }
+    catch (error) { showToast(error.message, "error"); }
+    finally { setButtonLoading(button, false); }
+  }));
   document.querySelectorAll(".edit-correspondence-button").forEach((button) => button.addEventListener("click", async () => {
     const record = state.correspondence.find((item) => item.id === button.dataset.id);
     if (!record) return;
