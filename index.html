@@ -112,6 +112,23 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); box-sh
 .notification-button span { position: absolute; top: -9px; right: -8px; min-width: 19px; height: 19px; display: grid; place-items: center; border: 2px solid #0b5188; border-radius: 999px; background: #ef4444; font-size: 10px; font-weight: 700; }
 .notification-button .notification-zero { display: none; }
 
+
+.inspections-page { display: grid; gap: 22px; }
+.inspection-list { display: grid; gap: 12px; }
+.inspection-item { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 18px; padding: 16px 18px; border: 1px solid var(--border); border-radius: 10px; background: #fff; }
+.inspection-item.critical { border-left: 4px solid #dc2626; }
+.inspection-item.high { border-left: 4px solid #f97316; }
+.inspection-item h3 { margin: 8px 0 7px; font-size: 15px; }
+.inspection-meta { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: 11px; }
+.inspection-observation { margin: 9px 0 0; color: #475569; font-size: 12px; line-height: 1.55; }
+.inspection-side { min-width: 190px; text-align: right; }
+.inspection-side strong, .inspection-side span { display: block; }
+.inspection-side span { margin-top: 5px; color: var(--muted); font-size: 10px; }
+.inspection-actions { display: flex; justify-content: flex-end; gap: 7px; flex-wrap: wrap; margin-top: 10px; }
+.inspection-photo-list { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 10px; }
+.inspection-photo-button { border: 1px solid var(--border); background: #f8fafc; border-radius: 7px; padding: 6px 8px; font-size: 10px; cursor: pointer; }
+@media (max-width:720px){.inspection-item{grid-template-columns:1fr}.inspection-side{text-align:left;min-width:0}.inspection-actions{justify-content:flex-start}}
+
 .calendar-page { display: grid; gap: 22px; }
 .calendar-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; }
 .calendar-nav { display: flex; align-items: center; gap: 9px; }
@@ -599,6 +616,44 @@ function getOffices() {
 
 
 
+
+function getInspections(projectId = null) {
+  const filter = projectId ? `&project_id=eq.${encodeURIComponent(projectId)}` : "";
+  return rest(`inspections?select=id,project_id,inspection_date,inspection_type,start_chainage_km,end_chainage_km,location_description,inspected_by,responsible_entity,observations,required_compliance,compliance_due_date,status,severity,linked_action_id,created_by,created_at,updated_at&order=inspection_date.desc,created_at.desc${filter}`);
+}
+function getInspectionPhotos() {
+  return rest("inspection_photos?select=id,inspection_id,storage_path,file_name,mime_type,size_bytes,caption,uploaded_by,uploaded_at&order=uploaded_at.desc");
+}
+async function createInspection(payload) {
+  const session = await ensureSession();
+  const rows = await rest("inspections", { method:"POST", headers:{Prefer:"return=representation"}, body:JSON.stringify({...payload,created_by:session?.user?.id||null,inspected_by:payload.inspected_by||session?.user?.id||null}) });
+  return rows[0] || null;
+}
+async function updateInspection(id,payload) {
+  const rows=await rest(`inspections?id=eq.${encodeURIComponent(id)}`,{method:"PATCH",headers:{Prefer:"return=representation"},body:JSON.stringify({...payload,updated_at:new Date().toISOString()})});
+  return rows[0]||null;
+}
+async function createInspectionPhoto(payload) {
+  const session=await ensureSession();
+  const rows=await rest("inspection_photos",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({...payload,uploaded_by:session?.user?.id||null})});
+  return rows[0]||null;
+}
+async function uploadInspectionPhoto(file,projectId,inspectionId){
+  if(!["image/jpeg","image/png","image/webp"].includes(file.type)) throw new Error("Only JPG, PNG and WEBP images are allowed.");
+  if(file.size>10*1024*1024) throw new Error("Each image must not exceed 10 MB.");
+  const session=await ensureSession();
+  const filename=safeStorageFilename(file.name);
+  const path=`${projectId}/${inspectionId}/${Date.now()}-${filename}`;
+  const response=await fetch(`${CONFIG.supabaseUrl}/storage/v1/object/inspection-photos/${encodeURI(path)}`,{method:"POST",headers:{apikey:CONFIG.supabasePublishableKey,Authorization:`Bearer ${session.access_token}`,"Content-Type":file.type,"x-upsert":"false"},body:file});
+  if(!response.ok){let message="Photo upload failed.";try{const result=await response.json();message=result.message||result.error||message;}catch{}throw new Error(message);}
+  return {storage_path:path,file_name:file.name,mime_type:file.type,size_bytes:file.size};
+}
+async function openInspectionPhoto(photo){
+  const session=await ensureSession();
+  const response=await fetch(`${CONFIG.supabaseUrl}/storage/v1/object/authenticated/inspection-photos/${encodeURI(photo.storage_path)}`,{headers:{apikey:CONFIG.supabasePublishableKey,Authorization:`Bearer ${session.access_token}`}});
+  if(!response.ok) throw new Error("Unable to open inspection photograph.");
+  const blob=await response.blob();const url=URL.createObjectURL(blob);window.open(url,"_blank","noopener,noreferrer");setTimeout(()=>URL.revokeObjectURL(url),60000);
+}
 function getCalendarEvents() {
   return rest("calendar_events?select=id,project_id,title,event_type,event_date,start_time,end_time,location,description,status,created_by,created_at,updated_at&order=event_date.asc,start_time.asc.nullslast");
 }
@@ -972,6 +1027,8 @@ const state = {
   notifications: [],
   calendarEvents: [],
   calendarViewDate: new Date(),
+  inspections: [],
+  inspectionPhotos: [],
   demo: new URLSearchParams(location.search).get("demo") === "1",
   loading: true,
   filters: { query: "", highway: "all", status: "all", office: "all" },
@@ -1149,6 +1206,7 @@ function sidebar(active = "projects") {
     ["projects", "projects", "Project Register"],
     ["mail", "correspondence", "Correspondence"],
     ["clipboard", "actions", "Action Tracking"],
+    ["inspection", "inspections", "Inspections"],
     ["calendar", "calendar", "Calendar"],
     ["reports", "reports", "Reports"],
     ["settings", "admin", "Administration"],
@@ -1841,6 +1899,22 @@ function bindCorrespondenceStatusButtons(onSaved) {
 
 
 
+
+function inspectionStatusLabel(status){return({open:"Open",under_compliance:"Under Compliance",complied:"Complied",verified:"Verified",closed:"Closed"})[status]||status||"Open";}
+function inspectionPhotosFor(id){return state.inspectionPhotos.filter((p)=>p.inspection_id===id);}
+function chainageLabel(item){if(item.start_chainage_km==null&&item.end_chainage_km==null)return"Chainage not specified";if(item.end_chainage_km==null||Number(item.end_chainage_km)===Number(item.start_chainage_km))return`Km ${item.start_chainage_km}`;return`Km ${item.start_chainage_km} to ${item.end_chainage_km}`;}
+function inspectionList(items,showProject=true){
+ if(!items.length)return`<div class="empty-state">${icon("inspection",42)}<h3>No inspections recorded</h3><p>Add the first site inspection.</p></div>`;
+ return`<div class="inspection-list">${items.map((item)=>{const project=state.projects.find((p)=>p.id===item.project_id);const photos=inspectionPhotosFor(item.id);return`<article class="inspection-item ${item.severity||"normal"}"><div><div class="action-topline"><span class="priority-pill ${item.severity==="critical"?"urgent":item.severity==="high"?"high":"normal"}">${escapeHtml(item.severity||"normal")}</span><span class="action-status ${item.status==="under_compliance"?"in_progress":item.status==="closed"||item.status==="verified"?"completed":"open"}">${escapeHtml(inspectionStatusLabel(item.status))}</span>${showProject&&project?`<span class="status-pill approved">${escapeHtml(project.project_code||project.project_name)}</span>`:""}</div><h3>${escapeHtml(item.inspection_type.replaceAll("_"," "))} inspection · ${escapeHtml(chainageLabel(item))}</h3><div class="inspection-meta"><span>Date: ${formatDate(item.inspection_date)}</span><span>Inspected by: ${escapeHtml(actionUserName(item.inspected_by))}</span>${item.responsible_entity?`<span>Responsible: ${escapeHtml(item.responsible_entity)}</span>`:""}${item.compliance_due_date?`<span>Compliance due: ${formatDate(item.compliance_due_date)}</span>`:""}</div>${item.location_description?`<p class="inspection-observation"><strong>Location:</strong> ${escapeHtml(item.location_description)}</p>`:""}<p class="inspection-observation"><strong>Observation:</strong> ${escapeHtml(item.observations)}</p>${item.required_compliance?`<p class="inspection-observation"><strong>Required compliance:</strong> ${escapeHtml(item.required_compliance)}</p>`:""}${photos.length?`<div class="inspection-photo-list">${photos.map((photo)=>`<button class="inspection-photo-button open-inspection-photo" data-photo-id="${photo.id}">${escapeHtml(photo.caption||photo.file_name)}</button>`).join("")}</div>`:""}</div><div class="inspection-side"><strong>${photos.length} photo${photos.length===1?"":"s"}</strong><span>Updated ${formatDate(item.updated_at||item.created_at)}</span><div class="inspection-actions">${["admin","editor"].includes(state.profile?.role)?`<button class="btn secondary edit-inspection-button" data-id="${item.id}">Edit</button>`:""}${item.linked_action_id?`<button class="btn secondary open-inspection-action">Open action</button>`:""}</div></div></article>`;}).join("")}</div>`;
+}
+function inspectionDialog(projectId=""){
+ return`<dialog id="inspection-dialog" class="modal"><form id="inspection-form" class="modal-card" novalidate><div class="modal-heading"><div><p class="eyebrow">Site Inspection</p><h2 id="inspection-dialog-title">Add inspection</h2><p>Record chainage-wise observations, compliance and photographs.</p></div><button class="icon-button" type="button" data-dialog-close>${icon("close")}</button></div><input id="inspection-id" type="hidden"/><div class="form-grid"><label>Project *<select id="inspection-project" required>${state.projects.map((p)=>`<option value="${p.id}" ${projectId===p.id?"selected":""}>${escapeHtml(p.project_name)}</option>`).join("")}</select></label><label>Inspection date *<input id="inspection-date" type="date" required/></label><label>Inspection type<select id="inspection-type"><option value="general">General</option><option value="quality">Quality</option><option value="safety">Safety</option><option value="maintenance">Maintenance</option><option value="roadside_well">Roadside well</option><option value="encroachment">Encroachment</option><option value="street_lighting">Street lighting</option><option value="emergency_facility">Ambulance / Crane</option><option value="land_acquisition">Land acquisition</option><option value="bridge">Bridge / Structure</option></select></label><label>Severity<select id="inspection-severity"><option value="normal">Normal</option><option value="low">Low</option><option value="high">High</option><option value="critical">Critical</option></select></label><label>Start chainage (km)<input id="inspection-start-chainage" type="number" step="0.001" min="0"/></label><label>End chainage (km)<input id="inspection-end-chainage" type="number" step="0.001" min="0"/></label><label class="wide">Location description<input id="inspection-location" placeholder="Village, structure or landmark"/></label><label>Responsible agency / office<select id="inspection-responsible"><option value="">Select organisation</option>${state.directoryEntities.filter((e)=>e.is_active!==false).map((e)=>`<option value="${escapeHtml(e.name)}">${escapeHtml(e.name)}</option>`).join("")}<option value="__other__">Other</option></select></label><label id="inspection-responsible-other-label" hidden>Other responsible agency<input id="inspection-responsible-other"/></label><label class="wide">Observations *<textarea id="inspection-observations" rows="4" required></textarea></label><label class="wide">Required compliance<textarea id="inspection-compliance" rows="3"></textarea></label><label>Compliance due date<input id="inspection-due-date" type="date"/></label><label>Status<select id="inspection-status"><option value="open">Open</option><option value="under_compliance">Under Compliance</option><option value="complied">Complied</option><option value="verified">Verified</option><option value="closed">Closed</option></select></label><label>Linked action<select id="inspection-action"><option value="">None</option>${state.actionItems.map((a)=>`<option value="${a.id}">${escapeHtml(a.title)}</option>`).join("")}</select></label><label class="wide">Photographs<input id="inspection-photos" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" multiple/><span class="attachment-help">Optional. Up to 10 MB per image.</span></label></div><p id="inspection-error" class="form-error"></p><div class="modal-actions"><button class="btn secondary" type="button" data-dialog-close>Cancel</button><button class="btn primary" id="inspection-save-button" type="submit">Save inspection</button></div></form></dialog>`;
+}
+function inspectionsPageTemplate(){const canEdit=["admin","editor"].includes(state.profile?.role);return`<div class="app-shell">${appHeader()}${sidebar("inspections")}<main class="main-content inspections-page"><div class="breadcrumb"><span>Dashboard</span><b>/</b>Inspections</div><div class="admin-heading"><div><h1>Inspections</h1><p>Chainage-wise site observations, photographs, compliance deadlines and follow-up.</p></div>${canEdit?`<button class="btn primary" id="add-inspection">${icon("plus")}Add inspection</button>`:""}</div><section class="action-summary-grid"><div class="admin-metric"><span>Total inspections</span><strong>${state.inspections.length}</strong></div><div class="admin-metric"><span>Open</span><strong>${state.inspections.filter((i)=>["open","under_compliance"].includes(i.status)).length}</strong></div><div class="admin-metric"><span>Critical / High</span><strong>${state.inspections.filter((i)=>["critical","high"].includes(i.severity)).length}</strong></div><div class="admin-metric"><span>Verified / Closed</span><strong>${state.inspections.filter((i)=>["verified","closed"].includes(i.status)).length}</strong></div></section><section class="admin-card"><div class="admin-card-heading"><div><h2>Inspection register</h2><p>${state.inspections.length} record${state.inspections.length===1?"":"s"} available.</p></div></div><div style="padding:18px 20px;">${inspectionList(state.inspections,true)}</div></section>${inspectionDialog("")}</main></div>`;}
+function projectInspectionsModule(project){const items=state.inspections.filter((i)=>i.project_id===project.id);const canEdit=["admin","editor"].includes(state.profile?.role);return`<div><div class="module-header"><div><h2>Inspections</h2><p>Site observations and compliance for this project.</p></div>${canEdit?`<button class="btn primary" id="add-project-inspection">${icon("plus")}Add inspection</button>`:""}</div>${inspectionList(items,false)}${inspectionDialog(project.id)}</div>`;}
+async function renderInspections(){root.innerHTML=`<div class="loading-screen"><span class="spinner dark"></span><p>Loading inspections...</p></div>`;try{[state.inspections,state.inspectionPhotos,state.actionItems]=await Promise.all([getInspections(),getInspectionPhotos(),getActionItems()]);root.innerHTML=inspectionsPageTemplate();bindInspectionEvents(renderInspections);}catch(error){root.innerHTML=`<div class="loading-screen"><p>${escapeHtml(error.message)}</p></div>`;}}
+function populateInspectionForm(item=null){document.querySelector("#inspection-form")?.reset();document.querySelector("#inspection-id").value=item?.id||"";document.querySelector("#inspection-dialog-title").textContent=item?"Edit inspection":"Add inspection";document.querySelector("#inspection-date").value=item?.inspection_date||isoDateLocal(new Date());if(!item)return;document.querySelector("#inspection-project").value=item.project_id||"";document.querySelector("#inspection-type").value=item.inspection_type||"general";document.querySelector("#inspection-severity").value=item.severity||"normal";document.querySelector("#inspection-start-chainage").value=item.start_chainage_km??"";document.querySelector("#inspection-end-chainage").value=item.end_chainage_km??"";document.querySelector("#inspection-location").value=item.location_description||"";const registered=state.directoryEntities.some((e)=>e.name===item.responsible_entity);document.querySelector("#inspection-responsible").value=registered?item.responsible_entity:item.responsible_entity?"__other__":"";document.querySelector("#inspection-responsible-other-label").hidden=registered||!item.responsible_entity;document.querySelector("#inspection-responsible-other").value=registered?"":item.responsible_entity||"";document.querySelector("#inspection-observations").value=item.observations||"";document.querySelector("#inspection-compliance").value=item.required_compliance||"";document.querySelector("#inspection-due-date").value=item.compliance_due_date||"";document.querySelector("#inspection-status").value=item.status||"open";document.querySelector("#inspection-action").value=item.linked_action_id||"";}
+function bindInspectionEvents(onSaved){bindCommonEvents();const dialog=document.querySelector("#inspection-dialog");const openNew=()=>{populateInspectionForm();dialog.showModal();};document.querySelector("#add-inspection")?.addEventListener("click",openNew);document.querySelector("#add-project-inspection")?.addEventListener("click",openNew);const responsible=document.querySelector("#inspection-responsible");responsible?.addEventListener("change",()=>{document.querySelector("#inspection-responsible-other-label").hidden=responsible.value!=="__other__";});document.querySelectorAll(".edit-inspection-button").forEach((button)=>button.addEventListener("click",()=>{const item=state.inspections.find((i)=>i.id===button.dataset.id);if(item){populateInspectionForm(item);dialog.showModal();}}));document.querySelectorAll(".open-inspection-photo").forEach((button)=>button.addEventListener("click",async()=>{const photo=state.inspectionPhotos.find((p)=>p.id===button.dataset.photoId);try{await openInspectionPhoto(photo);}catch(error){showToast(error.message,"error");}}));document.querySelectorAll(".open-inspection-action").forEach((button)=>button.addEventListener("click",()=>location.hash="#actions"));document.querySelector("#inspection-form")?.addEventListener("submit",async(event)=>{event.preventDefault();const form=event.currentTarget;if(!form.checkValidity()){form.reportValidity();return;}const id=document.querySelector("#inspection-id").value;const r=document.querySelector("#inspection-responsible").value;const payload={project_id:document.querySelector("#inspection-project").value,inspection_date:document.querySelector("#inspection-date").value,inspection_type:document.querySelector("#inspection-type").value,severity:document.querySelector("#inspection-severity").value,start_chainage_km:document.querySelector("#inspection-start-chainage").value||null,end_chainage_km:document.querySelector("#inspection-end-chainage").value||null,location_description:document.querySelector("#inspection-location").value.trim()||null,responsible_entity:r==="__other__"?document.querySelector("#inspection-responsible-other").value.trim()||null:r||null,observations:document.querySelector("#inspection-observations").value.trim(),required_compliance:document.querySelector("#inspection-compliance").value.trim()||null,compliance_due_date:document.querySelector("#inspection-due-date").value||null,status:document.querySelector("#inspection-status").value,linked_action_id:document.querySelector("#inspection-action").value||null};const button=document.querySelector("#inspection-save-button");const error=document.querySelector("#inspection-error");setButtonLoading(button,true,"Saving...");error.textContent="";try{const inspection=id?await updateInspection(id,payload):await createInspection(payload);const files=[...(document.querySelector("#inspection-photos")?.files||[])];for(const file of files){const uploaded=await uploadInspectionPhoto(file,inspection.project_id,inspection.id);await createInspectionPhoto({inspection_id:inspection.id,...uploaded,caption:file.name});}dialog.close();showToast(id?"Inspection updated.":"Inspection saved.");await onSaved();}catch(err){error.textContent=err.message;}finally{setButtonLoading(button,false);}});}
 function isoDateLocal(date) {
   const copy = new Date(date);
   const year = copy.getFullYear();
@@ -2677,7 +2751,7 @@ async function renderWorkspace(projectId) {
   if (state.demo) project = state.projects.find((item) => item.id === projectId);
   else {
     try {
-      [project, state.correspondence, state.actionItems, state.assignableUsers, state.projectJurisdictions, state.actionAssignees, state.actionProgressUpdates, state.actionWorkflowEvents] = await Promise.all([getProject(projectId), getCorrespondence(projectId), getActionItems(projectId), getAssignableUsers(), getProjectJurisdictions(), getActionAssignees(), getActionProgressUpdates(), getActionWorkflowEvents()]);
+      [project, state.correspondence, state.actionItems, state.assignableUsers, state.projectJurisdictions, state.actionAssignees, state.actionProgressUpdates, state.actionWorkflowEvents, state.inspections, state.inspectionPhotos] = await Promise.all([getProject(projectId), getCorrespondence(projectId), getActionItems(projectId), getAssignableUsers(), getProjectJurisdictions(), getActionAssignees(), getActionProgressUpdates(), getActionWorkflowEvents(), getInspections(projectId), getInspectionPhotos()]);
     } catch (error) { showToast(error.message, "error"); }
   }
   root.innerHTML = workspaceTemplate(project);
@@ -2691,9 +2765,10 @@ async function renderWorkspace(projectId) {
     target.innerHTML = key === "overview" ? workspaceOverview(project)
       : key === "correspondence" ? projectCorrespondenceModule(project)
       : key === "actions" ? projectActionsModule(project)
-      : key === "inspections" ? emptyModule("No inspections recorded", "Create site inspections with observations, instructions and photographs.", "inspection")
+      : key === "inspections" ? projectInspectionsModule(project)
       : key === "documents" ? emptyModule("No documents uploaded", "Store agreements, approvals, drawings, reports and orders in this workspace.", "document")
       : emptyModule("Project timeline", "Milestones and key events will be shown chronologically here.", "timeline");
+    if (key === "inspections") { bindInspectionEvents(async()=>{[state.inspections,state.inspectionPhotos]=await Promise.all([getInspections(project.id),getInspectionPhotos()]);document.querySelector("#workspace-tab-content").innerHTML=projectInspectionsModule(project);bindInspectionEvents(async()=>{location.hash=`#project/${project.id}`;});}); }
     if (key === "actions") {
       bindActionEvents(async () => {
         state.actionItems = await getActionItems(project.id);
@@ -2734,7 +2809,8 @@ function bindCommonEvents() {
   document.querySelectorAll("[data-nav='correspondence']").forEach((button) => button.addEventListener("click", () => { location.hash = "#correspondence"; }));
   document.querySelectorAll("[data-nav='actions']").forEach((button) => button.addEventListener("click", () => { location.hash = "#actions"; }));
   document.querySelectorAll("[data-nav='calendar']").forEach((button) => button.addEventListener("click", () => { location.hash = "#calendar"; }));
-  document.querySelectorAll(".nav-item:not([data-nav='projects']):not([data-nav='admin']):not([data-nav='correspondence']):not([data-nav='actions']):not([data-nav='calendar'])").forEach((button) => button.addEventListener("click", () => showToast(`${button.textContent.trim()} will be activated in the next module.`, "info")));
+  document.querySelectorAll("[data-nav='inspections']").forEach((button) => button.addEventListener("click", () => { location.hash = "#inspections"; }));
+  document.querySelectorAll(".nav-item:not([data-nav='projects']):not([data-nav='admin']):not([data-nav='correspondence']):not([data-nav='actions']):not([data-nav='calendar']):not([data-nav='inspections'])").forEach((button) => button.addEventListener("click", () => showToast(`${button.textContent.trim()} will be activated in the next module.`, "info")));
 }
 
 function bindRegisterEvents() {
@@ -3012,6 +3088,7 @@ async function route() {
   if (hash === "#actions") return renderActionPage();
   if (hash === "#notifications") return renderNotifications();
   if (hash === "#calendar") return renderCalendar();
+  if (hash === "#inspections") return renderInspections();
   const match = hash.match(/^#project\/(.+)$/);
   if (match) return renderWorkspace(match[1]);
   renderRegister();
