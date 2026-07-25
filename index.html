@@ -80,6 +80,11 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); box-sh
 .auth-security { margin: 20px 0 0; text-align: center; color: #94a3b8; font-size: 11px; line-height: 1.5; }
 .form-error { min-height: 16px; margin: 0; color: var(--red); font-size: 12px; font-weight: 500; }
 
+.password-field { position: relative; }
+.password-field input { padding-right: 72px; }
+.password-toggle { position: absolute; right: 8px; bottom: 6px; min-height: 30px; border: 0; border-radius: 6px; padding: 4px 8px; background: transparent; color: var(--primary); font-size: 12px; font-weight: 700; }
+.password-toggle:hover { background: #edf3f9; }
+
 .app-shell { min-height: 100vh; display: grid; grid-template-columns: 245px 1fr; grid-template-rows: 96px 1fr; }
 .topbar { position: sticky; top: 0; z-index: 20; grid-column: 1 / -1; display: grid; grid-template-columns: 275px minmax(260px, 740px) 1fr; align-items: center; gap: 28px; padding: 0 34px 0 24px; background: linear-gradient(90deg, #10447a, #07558e); color: #fff; box-shadow: 0 2px 7px rgba(15,58,102,.18); }
 .global-search { height: 54px; display: flex; align-items: center; gap: 12px; padding: 0 14px; border-radius: 10px; background: #fff; color: var(--muted); box-shadow: 0 5px 16px rgba(0,0,0,.13); }
@@ -471,7 +476,14 @@ function loginTemplate() {
           <label>Full name<input id="signup-name" required placeholder="Your full name" /></label>
           <label>Designation<input id="signup-designation" required placeholder="e.g. Sectional Engineer" /></label>
           <label>Email address<input id="signup-email" type="email" required placeholder="Official email address" /></label>
-          <label>Password<input id="signup-password" type="password" required minlength="8" placeholder="Minimum 8 characters" /></label>
+          <label class="password-field">Password
+            <input id="signup-password" type="password" required minlength="8" autocomplete="new-password" placeholder="Minimum 8 characters" />
+            <button class="password-toggle" id="toggle-signup-password" type="button" aria-pressed="false">Show</button>
+          </label>
+          <label class="password-field">Re-enter password
+            <input id="signup-password-confirm" type="password" required minlength="8" autocomplete="new-password" placeholder="Re-enter your password" />
+            <button class="password-toggle" id="toggle-signup-password-confirm" type="button" aria-pressed="false">Show</button>
+          </label>
         </div>
         <p id="signup-error" class="form-error"></p>
         <div class="modal-actions"><button class="btn secondary" id="signup-cancel-button" type="button" data-dialog-close>Cancel</button><button class="btn primary" id="signup-button" type="submit">Create account</button></div>
@@ -757,9 +769,27 @@ function bindLoginEvents() {
   const closeSignup = (event) => { event.preventDefault(); event.stopPropagation(); signupDialog.close(); };
   document.querySelector("#signup-close-button")?.addEventListener("click", closeSignup);
   document.querySelector("#signup-cancel-button")?.addEventListener("click", closeSignup);
+  const bindPasswordToggle = (buttonId, inputId) => {
+    const button = document.querySelector(buttonId);
+    const input = document.querySelector(inputId);
+    button?.addEventListener("click", () => {
+      const showing = input.type === "text";
+      input.type = showing ? "password" : "text";
+      button.textContent = showing ? "Show" : "Hide";
+      button.setAttribute("aria-pressed", String(!showing));
+    });
+  };
+  bindPasswordToggle("#toggle-signup-password", "#signup-password");
+  bindPasswordToggle("#toggle-signup-password-confirm", "#signup-password-confirm");
+  const clearPasswordMismatch = () => document.querySelector("#signup-password-confirm")?.setCustomValidity("");
+  document.querySelector("#signup-password")?.addEventListener("input", clearPasswordMismatch);
+  document.querySelector("#signup-password-confirm")?.addEventListener("input", clearPasswordMismatch);
   document.querySelector("#signup-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     const formElement = event.currentTarget;
+    const password = document.querySelector("#signup-password");
+    const confirmPassword = document.querySelector("#signup-password-confirm");
+    confirmPassword.setCustomValidity(password.value === confirmPassword.value ? "" : "Passwords do not match.");
     if (!formElement.checkValidity()) { formElement.reportValidity(); return; }
     const button = document.querySelector("#signup-button");
     const error = document.querySelector("#signup-error");
