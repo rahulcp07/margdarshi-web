@@ -163,6 +163,15 @@ h1, h2, h3, p { overflow-wrap: anywhere; }
 .correspondence-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; }
 .correspondence-filters { display: flex; gap: 10px; flex-wrap: wrap; }
 .other-office-field[hidden] { display: none !important; }
+.directory-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.directory-card { padding: 15px 16px; border: 1px solid var(--border); border-radius: 10px; background: #fff; }
+.directory-card-top { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; }
+.directory-card h3 { margin: 0; font-size: 14px; }
+.directory-card p { margin: 5px 0 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.directory-actions { display: flex; gap: 7px; margin-top: 12px; }
+.directory-category { display: inline-flex; padding: 4px 8px; border-radius: 999px; background: #edf3f9; color: #174a7e; font-size: 10px; font-weight: 700; }
+.directory-frequent { display: inline-flex; margin-left: 5px; padding: 4px 8px; border-radius: 999px; background: #e5f7ef; color: #08734f; font-size: 10px; font-weight: 700; }
+
 
 .correspondence-filters select, .correspondence-filters input { width: auto; min-width: 160px; }
 .correspondence-list { display: grid; gap: 12px; }
@@ -479,6 +488,31 @@ function getOffices() {
 
 
 
+
+function getDirectoryEntities(includeInactive = false) {
+  const activeFilter = includeInactive ? "" : "&is_active=eq.true";
+  return rest(`directory_entities?select=id,name,category,short_name,parent_entity_id,email,phone,address,is_frequent,display_order,is_active,remarks,created_at,updated_at&order=is_frequent.desc,display_order.asc,name.asc${activeFilter}`);
+}
+
+async function createDirectoryEntity(payload) {
+  const session = await ensureSession();
+  const rows = await rest("directory_entities", {
+    method: "POST",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify({ ...payload, created_by: session?.user?.id || null }),
+  });
+  return rows[0] || null;
+}
+
+async function updateDirectoryEntity(id, payload) {
+  const rows = await rest(`directory_entities?id=eq.${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify({ ...payload, updated_at: new Date().toISOString() }),
+  });
+  return rows[0] || null;
+}
+
 function getCorrespondence(projectId = null) {
   const projectFilter = projectId ? `&project_id=eq.${encodeURIComponent(projectId)}` : "";
   return rest(`correspondence?select=id,project_id,letter_number,letter_date,direction,from_party,to_party,subject,action_required,due_date,status,document_url,remarks,created_by,created_at,received_or_sent_date,reference_details,priority,attachment_name,updated_at&order=letter_date.desc,created_at.desc${projectFilter}`);
@@ -565,6 +599,7 @@ const state = {
   adminUsers: [],
   assignments: [],
   correspondence: [],
+  directoryEntities: [],
   demo: new URLSearchParams(location.search).get("demo") === "1",
   loading: true,
   filters: { query: "", highway: "all", status: "all", office: "all" },
@@ -894,6 +929,67 @@ function assignmentSummary(userId) {
   }).join(" · ");
 }
 
+
+const DIRECTORY_CATEGORIES = [
+  ["departmental_office", "PWD / NH Office"],
+  ["morth", "MoRTH"],
+  ["revenue_cala", "CALA / Revenue Authority"],
+  ["railways", "Railways"],
+  ["consultant", "Consultant / Authority Engineer"],
+  ["contractor", "Contractor"],
+  ["court_legal", "Court / Legal"],
+  ["utility", "Utility Department"],
+  ["local_body", "Local Body"],
+  ["other", "Other"],
+];
+
+function directoryCategoryLabel(value) {
+  return DIRECTORY_CATEGORIES.find(([key]) => key === value)?.[1] || value || "Other";
+}
+
+function directoryEntityCards() {
+  if (!state.directoryEntities.length) return `<div class="empty-state"><h3>No directory entries</h3><p>Add the first office or organisation.</p></div>`;
+  return `<div class="directory-grid">${state.directoryEntities.map((entity) => `
+    <article class="directory-card">
+      <div class="directory-card-top">
+        <div>
+          <h3>${escapeHtml(entity.name)}</h3>
+          <p>${escapeHtml(entity.short_name || "")}${entity.email ? ` · ${escapeHtml(entity.email)}` : ""}${entity.phone ? ` · ${escapeHtml(entity.phone)}` : ""}</p>
+        </div>
+        <div><span class="directory-category">${escapeHtml(directoryCategoryLabel(entity.category))}</span>${entity.is_frequent ? `<span class="directory-frequent">Frequent</span>` : ""}</div>
+      </div>
+      ${entity.address ? `<p>${escapeHtml(entity.address)}</p>` : ""}
+      ${entity.remarks ? `<p>${escapeHtml(entity.remarks)}</p>` : ""}
+      <div class="directory-actions">
+        <button class="btn secondary edit-directory-button" data-directory-id="${entity.id}">Edit</button>
+        <button class="btn secondary toggle-directory-button" data-directory-id="${entity.id}" data-next-active="${entity.is_active ? "false" : "true"}">${entity.is_active ? "Deactivate" : "Reactivate"}</button>
+      </div>
+    </article>`).join("")}</div>`;
+}
+
+function directoryDialog() {
+  return `<dialog id="directory-dialog" class="modal compact-modal">
+    <form id="directory-form" class="modal-card" novalidate>
+      <div class="modal-heading"><div><p class="eyebrow">Official Directory</p><h2 id="directory-dialog-title">Add office / organisation</h2><p>Entries automatically appear in correspondence From and To dropdowns.</p></div><button class="icon-button" type="button" data-dialog-close>${icon("close")}</button></div>
+      <input id="directory-id" type="hidden" />
+      <div class="form-grid single">
+        <label>Name *<input id="directory-name" required placeholder="Full official name" /></label>
+        <label>Short name<input id="directory-short-name" placeholder="e.g. RO MoRTH Mumbai" /></label>
+        <label>Category *<select id="directory-category" required>${DIRECTORY_CATEGORIES.map(([value,label])=>`<option value="${value}">${label}</option>`).join("")}</select></label>
+        <label>Email<input id="directory-email" type="email" placeholder="Official email, if available" /></label>
+        <label>Phone<input id="directory-phone" placeholder="Official contact number" /></label>
+        <label>Address<textarea id="directory-address" rows="2"></textarea></label>
+        <label>Display priority<input id="directory-order" type="number" min="1" step="1" value="999" /></label>
+        <label style="display:flex;grid-template-columns:auto 1fr;align-items:center;gap:10px;"><input id="directory-frequent" type="checkbox" style="width:auto;" />Show under frequently used</label>
+        <label style="display:flex;grid-template-columns:auto 1fr;align-items:center;gap:10px;"><input id="directory-active" type="checkbox" style="width:auto;" checked />Active</label>
+        <label>Remarks<textarea id="directory-remarks" rows="2"></textarea></label>
+      </div>
+      <p id="directory-error" class="form-error"></p>
+      <div class="modal-actions"><button class="btn secondary" type="button" data-dialog-close>Cancel</button><button class="btn primary" id="directory-save" type="submit">Save entry</button></div>
+    </form>
+  </dialog>`;
+}
+
 function administrationTemplate() {
   const users = state.adminUsers;
   const pending = users.filter((user) => user.account_status === "pending").length;
@@ -935,7 +1031,12 @@ function administrationTemplate() {
           }).join("") : `<div class="empty-state"><h3>No assignments recorded</h3><p>Add a primary or additional-charge post from the user table.</p></div>`}
         </div>
       </section>
+      <section class="admin-card">
+        <div class="admin-card-heading"><div><h2>Official office and organisation directory</h2><p>Frequently used entries appear first in correspondence dropdowns; all others are alphabetical.</p></div><button class="btn primary" id="add-directory-button">${icon("plus")}Add entry</button></div>
+        <div style="padding:18px 20px;">${directoryEntityCards()}</div>
+      </section>
     </main>
+    ${directoryDialog()}
     <dialog id="assignment-dialog" class="modal compact-modal"><form id="assignment-form" class="modal-card" novalidate>
       <div class="modal-heading"><div><p class="eyebrow">User assignment</p><h2>Add post / additional charge</h2><p id="assignment-user-label"></p></div><button class="icon-button" type="button" data-dialog-close>${icon("close")}</button></div>
       <input type="hidden" id="assignment-user-id" />
@@ -961,7 +1062,7 @@ async function renderAdministration() {
   }
   root.innerHTML = `<div class="loading-screen"><span class="spinner dark"></span><p>Loading administration...</p></div>`;
   try {
-    [state.adminUsers, state.assignments] = await Promise.all([getAdminUsers(), getUserAssignments()]);
+    [state.adminUsers, state.assignments, state.directoryEntities] = await Promise.all([getAdminUsers(), getUserAssignments(), getDirectoryEntities(true)]);
     root.innerHTML = administrationTemplate();
     bindAdministrationEvents();
   } catch (error) {
@@ -1038,6 +1139,81 @@ function bindAdministrationEvents() {
     catch (error) { showToast(error.message, "error"); }
     finally { setButtonLoading(button, false); }
   }));
+
+  const directoryDialogElement = document.querySelector("#directory-dialog");
+  const resetDirectoryForm = () => {
+    document.querySelector("#directory-form")?.reset();
+    document.querySelector("#directory-id").value = "";
+    document.querySelector("#directory-dialog-title").textContent = "Add office / organisation";
+    document.querySelector("#directory-order").value = "999";
+    document.querySelector("#directory-active").checked = true;
+    document.querySelector("#directory-error").textContent = "";
+  };
+
+  document.querySelector("#add-directory-button")?.addEventListener("click", () => {
+    resetDirectoryForm();
+    directoryDialogElement.showModal();
+  });
+
+  document.querySelectorAll(".edit-directory-button").forEach((button) => button.addEventListener("click", () => {
+    const entity = state.directoryEntities.find((item) => item.id === button.dataset.directoryId);
+    if (!entity) return;
+    resetDirectoryForm();
+    document.querySelector("#directory-dialog-title").textContent = "Edit office / organisation";
+    document.querySelector("#directory-id").value = entity.id;
+    document.querySelector("#directory-name").value = entity.name || "";
+    document.querySelector("#directory-short-name").value = entity.short_name || "";
+    document.querySelector("#directory-category").value = entity.category || "other";
+    document.querySelector("#directory-email").value = entity.email || "";
+    document.querySelector("#directory-phone").value = entity.phone || "";
+    document.querySelector("#directory-address").value = entity.address || "";
+    document.querySelector("#directory-order").value = entity.display_order ?? 999;
+    document.querySelector("#directory-frequent").checked = Boolean(entity.is_frequent);
+    document.querySelector("#directory-active").checked = Boolean(entity.is_active);
+    document.querySelector("#directory-remarks").value = entity.remarks || "";
+    directoryDialogElement.showModal();
+  }));
+
+  document.querySelector("#directory-form")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    if (!form.checkValidity()) { form.reportValidity(); return; }
+    const button = document.querySelector("#directory-save");
+    const error = document.querySelector("#directory-error");
+    const id = document.querySelector("#directory-id").value;
+    const value = (selector) => document.querySelector(selector)?.value?.trim() || null;
+    const payload = {
+      name: value("#directory-name"),
+      short_name: value("#directory-short-name"),
+      category: value("#directory-category") || "other",
+      email: value("#directory-email"),
+      phone: value("#directory-phone"),
+      address: value("#directory-address"),
+      display_order: Number(document.querySelector("#directory-order").value || 999),
+      is_frequent: document.querySelector("#directory-frequent").checked,
+      is_active: document.querySelector("#directory-active").checked,
+      remarks: value("#directory-remarks"),
+    };
+    setButtonLoading(button, true, "Saving..."); error.textContent = "";
+    try {
+      if (id) await updateDirectoryEntity(id, payload);
+      else await createDirectoryEntity(payload);
+      directoryDialogElement.close();
+      showToast(id ? "Directory entry updated." : "Directory entry added.");
+      await renderAdministration();
+    } catch (err) { error.textContent = err.message; }
+    finally { setButtonLoading(button, false); }
+  });
+
+  document.querySelectorAll(".toggle-directory-button").forEach((button) => button.addEventListener("click", async () => {
+    setButtonLoading(button, true, "Saving...");
+    try {
+      await updateDirectoryEntity(button.dataset.directoryId, { is_active: button.dataset.nextActive === "true" });
+      showToast("Directory entry updated.");
+      await renderAdministration();
+    } catch (error) { showToast(error.message, "error"); }
+    finally { setButtonLoading(button, false); }
+  }));
 }
 
 
@@ -1082,24 +1258,18 @@ function correspondenceList(records, projectMap = true) {
 
 
 function correspondenceOfficeOptions(selected = "") {
-  const priorityNames = [
-    "National Highway Division, Dhule",
-    "National Highway Circle, Pune",
-    "National Highway Subdivision, Jalgaon",
-    "National Highway Subdivision, Sakri",
-  ];
-  const priorityMap = new Map(priorityNames.map((name, index) => [name, index]));
-  const priority = state.offices
-    .filter((office) => priorityMap.has(office.name))
-    .sort((a, b) => priorityMap.get(a.name) - priorityMap.get(b.name));
-  const others = state.offices
-    .filter((office) => !priorityMap.has(office.name))
+  const active = state.directoryEntities.filter((entity) => entity.is_active !== false);
+  const frequent = active
+    .filter((entity) => entity.is_frequent)
+    .sort((a, b) => Number(a.display_order || 999) - Number(b.display_order || 999) || a.name.localeCompare(b.name));
+  const others = active
+    .filter((entity) => !entity.is_frequent)
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  const option = (office) => `<option value="${escapeHtml(office.name)}" ${selected === office.name ? "selected" : ""}>${escapeHtml(office.name)}</option>`;
-  return `<option value="">Select office</option>
-    ${priority.length ? `<optgroup label="Frequently used offices">${priority.map(option).join("")}</optgroup>` : ""}
-    ${others.length ? `<optgroup label="Other registered offices">${others.map(option).join("")}</optgroup>` : ""}
+  const option = (entity) => `<option value="${escapeHtml(entity.name)}" ${selected === entity.name ? "selected" : ""}>${escapeHtml(entity.name)}</option>`;
+  return `<option value="">Select office/organisation</option>
+    ${frequent.length ? `<optgroup label="Frequently used">${frequent.map(option).join("")}</optgroup>` : ""}
+    ${others.length ? `<optgroup label="Directory (A–Z)">${others.map(option).join("")}</optgroup>` : ""}
     <option value="__other__" ${selected === "__other__" ? "selected" : ""}>Other</option>`;
 }
 
@@ -1605,7 +1775,7 @@ function bindLoginEvents() {
 }
 
 async function loadAuthenticatedData() {
-  [state.profile, state.projects, state.highways, state.offices] = await Promise.all([getProfile(), getProjects(), getHighways(), getOffices()]);
+  [state.profile, state.projects, state.highways, state.offices, state.directoryEntities] = await Promise.all([getProfile(), getProjects(), getHighways(), getOffices(), getDirectoryEntities()]);
 }
 
 async function route() {
