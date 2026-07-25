@@ -465,8 +465,8 @@ function loginTemplate() {
       </section>
     </main>
     <dialog id="signup-dialog" class="modal compact-modal">
-      <form id="signup-form" method="dialog" class="modal-card" novalidate>
-        <div class="modal-heading"><div><p class="eyebrow">Initial access</p><h2>Create account</h2><p>Your account will require administrator approval for editing rights.</p></div><button class="icon-button" type="button" data-dialog-close aria-label="Close">${icon("close")}</button></div>
+      <form id="signup-form" class="modal-card" novalidate>
+        <div class="modal-heading"><div><p class="eyebrow">Initial access</p><h2>Create account</h2><p>Your account will require administrator approval for editing rights.</p></div><button class="icon-button" id="signup-close-button" type="button" data-dialog-close aria-label="Close">${icon("close")}</button></div>
         <div class="form-grid single">
           <label>Full name<input id="signup-name" required placeholder="Your full name" /></label>
           <label>Designation<input id="signup-designation" required placeholder="e.g. Sectional Engineer" /></label>
@@ -474,7 +474,7 @@ function loginTemplate() {
           <label>Password<input id="signup-password" type="password" required minlength="8" placeholder="Minimum 8 characters" /></label>
         </div>
         <p id="signup-error" class="form-error"></p>
-        <div class="modal-actions"><button class="btn secondary" type="button" data-dialog-close>Cancel</button><button class="btn primary" id="signup-button" type="submit">Create account</button></div>
+        <div class="modal-actions"><button class="btn secondary" id="signup-cancel-button" type="button" data-dialog-close>Cancel</button><button class="btn primary" id="signup-button" type="submit">Create account</button></div>
       </form>
     </dialog>`;
 }
@@ -581,8 +581,8 @@ function projectRegisterTemplate() {
 
 function addProjectDialog() {
   return `<dialog id="project-dialog" class="modal">
-    <form id="project-form" method="dialog" class="modal-card" novalidate>
-      <div class="modal-heading"><div><p class="eyebrow">Project Register</p><h2>Add Project</h2><p>Create the basic record now; remaining details can be added later.</p></div><button class="icon-button" type="button" data-dialog-close aria-label="Close">${icon("close")}</button></div>
+    <form id="project-form" class="modal-card" novalidate>
+      <div class="modal-heading"><div><p class="eyebrow">Project Register</p><h2>Add Project</h2><p>Create the basic record now; remaining details can be added later.</p></div><button class="icon-button" id="project-close-button" type="button" data-dialog-close aria-label="Close">${icon("close")}</button></div>
       <div class="form-section"><h3>Basic information</h3><div class="form-grid">
         <label class="wide">Project name *<input id="project-name" required placeholder="e.g. NH-753B Package-2: Nandurbar–Taloda" /></label>
         <label>Project code<input id="project-code" placeholder="e.g. NH753B-PKG2" /></label>
@@ -599,7 +599,7 @@ function addProjectDialog() {
         <label class="wide">Description<textarea id="project-description" rows="3" placeholder="Brief scope and important context"></textarea></label>
       </div></div>
       <p id="project-error" class="form-error"></p>
-      <div class="modal-actions"><button class="btn secondary" type="button" data-dialog-close>Cancel</button><button class="btn primary" id="save-project-button" type="submit">Save Project</button></div>
+      <div class="modal-actions"><button class="btn secondary" id="project-cancel-button" type="button" data-dialog-close>Cancel</button><button class="btn primary" id="save-project-button" type="submit">Save Project</button></div>
     </form>
   </dialog>`;
 }
@@ -686,6 +686,10 @@ function bindRegisterEvents() {
     renderRegister();
   });
   document.querySelector("#add-project-button")?.addEventListener("click", () => document.querySelector("#project-dialog").showModal());
+  const projectDialog = document.querySelector("#project-dialog");
+  const closeProject = (event) => { event.preventDefault(); event.stopPropagation(); projectDialog?.close(); };
+  document.querySelector("#project-close-button")?.addEventListener("click", closeProject);
+  document.querySelector("#project-cancel-button")?.addEventListener("click", closeProject);
   document.querySelector("#project-form")?.addEventListener("submit", handleCreateProject);
   bindRowEvents();
 }
@@ -750,6 +754,9 @@ function bindLoginEvents() {
   });
   const signupDialog = document.querySelector("#signup-dialog");
   document.querySelector("#open-signup").addEventListener("click", () => signupDialog.showModal());
+  const closeSignup = (event) => { event.preventDefault(); event.stopPropagation(); signupDialog.close(); };
+  document.querySelector("#signup-close-button")?.addEventListener("click", closeSignup);
+  document.querySelector("#signup-cancel-button")?.addEventListener("click", closeSignup);
   document.querySelector("#signup-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     const formElement = event.currentTarget;
@@ -809,9 +816,11 @@ async function init() {
 document.addEventListener("click", (event) => {
   const closeButton = event.target.closest("[data-dialog-close]");
   if (!closeButton) return;
+  event.preventDefault();
+  event.stopPropagation();
   const dialog = closeButton.closest("dialog");
   if (dialog) dialog.close();
-});
+}, true);
 
 window.addEventListener("hashchange", () => { if (state.session || state.demo) route(); });
 init();
