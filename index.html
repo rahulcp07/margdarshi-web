@@ -158,6 +158,40 @@ h1, h2, h3, p { overflow-wrap: anywhere; }
   .app-shell { grid-template-columns: 78px 1fr; grid-template-rows: 82px 1fr; }.topbar { grid-template-columns: 60px 1fr auto; height: 82px; padding: 0 16px; }.topbar .brand-lockup > div:last-child { display: none; }.topbar .brand-lockup { min-width: auto; }.topbar .emblem { width: 42px; height: 42px; }.global-search kbd { display: none; }.sidebar { top: 82px; height: calc(100vh - 82px); padding-inline: 8px; }.nav-item { justify-content: center; padding: 0; }.nav-item span, .nav-item svg:last-child, .sidebar-footer strong, .sidebar-footer span { display: none; }.nav-item.active::before { left: -8px; }.sidebar-footer { padding: 10px; }.sidebar-footer .road-mark { width: 34px; height: 34px; margin: auto; }.main-content { padding: 22px 18px; }.filter-card { grid-template-columns: 1fr 1fr; }.search-input { grid-column: 1 / -1; min-height: 43px; }.btn.reset { width: 100%; }.workspace-stat-grid { grid-template-columns: 1fr 1fr; }.overview-layout { grid-template-columns: 1fr; }
 }
 
+
+.correspondence-page { display: grid; gap: 22px; }
+.correspondence-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; }
+.correspondence-filters { display: flex; gap: 10px; flex-wrap: wrap; }
+.correspondence-filters select, .correspondence-filters input { width: auto; min-width: 160px; }
+.correspondence-list { display: grid; gap: 12px; }
+.correspondence-item { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 18px; padding: 16px 18px; border: 1px solid var(--border); border-radius: 10px; background: #fff; }
+.correspondence-main { min-width: 0; }
+.correspondence-topline { display: flex; gap: 9px; align-items: center; flex-wrap: wrap; }
+.direction-pill, .priority-pill, .letter-status { display: inline-flex; align-items: center; width: fit-content; padding: 4px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; text-transform: capitalize; }
+.direction-pill.incoming { color: #155e75; background: #e0f2fe; }
+.direction-pill.outgoing { color: #5b21b6; background: #ede9fe; }
+.priority-pill.urgent { color: #991b1b; background: #fee2e2; }
+.priority-pill.high { color: #9a3412; background: #ffedd5; }
+.priority-pill.normal { color: #334155; background: #f1f5f9; }
+.priority-pill.low { color: #166534; background: #dcfce7; }
+.letter-status.open { color: #9a3412; background: #ffedd5; }
+.letter-status.under_review { color: #1d4ed8; background: #dbeafe; }
+.letter-status.replied, .letter-status.closed, .letter-status.no_action { color: #166534; background: #dcfce7; }
+.correspondence-item h3 { margin: 9px 0 7px; font-size: 15px; }
+.correspondence-meta { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: 11px; }
+.correspondence-parties { margin-top: 9px; color: #475569; font-size: 12px; }
+.correspondence-side { min-width: 160px; text-align: right; }
+.correspondence-side strong, .correspondence-side span { display: block; }
+.correspondence-side span { margin-top: 5px; color: var(--muted); font-size: 10px; }
+.correspondence-side .btn { margin-top: 12px; }
+.module-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 18px; }
+.module-header h2 { margin: 0; font-size: 20px; }
+.module-header p { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
+@media (max-width: 720px) {
+  .correspondence-item { grid-template-columns: 1fr; }
+  .correspondence-side { text-align: left; min-width: 0; }
+}
+
 .admin-page { display: grid; gap: 22px; }
 .admin-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; }
 .admin-heading h1 { margin: 0; font-size: 35px; letter-spacing: -.035em; }
@@ -442,6 +476,32 @@ function getOffices() {
 }
 
 
+
+function getCorrespondence(projectId = null) {
+  const projectFilter = projectId ? `&project_id=eq.${encodeURIComponent(projectId)}` : "";
+  return rest(`correspondence?select=id,project_id,letter_number,letter_date,direction,from_party,to_party,subject,action_required,due_date,status,document_url,remarks,created_by,created_at,received_or_sent_date,reference_details,priority,attachment_name,updated_at&order=letter_date.desc,created_at.desc${projectFilter}`);
+}
+
+async function createCorrespondence(payload) {
+  const session = await ensureSession();
+  const rows = await rest("correspondence", {
+    method: "POST",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify({ ...payload, created_by: session?.user?.id || null, updated_by: session?.user?.id || null }),
+  });
+  return rows[0] || null;
+}
+
+async function updateCorrespondence(id, payload) {
+  const session = await ensureSession();
+  const rows = await rest(`correspondence?id=eq.${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify({ ...payload, updated_by: session?.user?.id || null, updated_at: new Date().toISOString() }),
+  });
+  return rows[0] || null;
+}
+
 function getAdminUsers() {
   return rest("profiles?select=id,full_name,designation,email,role,office_id,office_name,account_status,is_active,approved_at,created_at&order=created_at.desc");
 }
@@ -502,6 +562,7 @@ const state = {
   offices: [],
   adminUsers: [],
   assignments: [],
+  correspondence: [],
   demo: new URLSearchParams(location.search).get("demo") === "1",
   loading: true,
   filters: { query: "", highway: "all", status: "all", office: "all" },
@@ -977,6 +1038,161 @@ function bindAdministrationEvents() {
   }));
 }
 
+
+function correspondenceStatusLabel(status) {
+  return ({ open: "Open", under_review: "Under Review", replied: "Replied", closed: "Closed", no_action: "No Action" })[status] || status || "Open";
+}
+
+function correspondenceList(records, projectMap = true) {
+  if (!records.length) return `<div class="empty-state">${icon("mail",42)}<h3>No correspondence recorded</h3><p>Add the first incoming or outgoing letter.</p></div>`;
+  return `<div class="correspondence-list">${records.map((item) => {
+    const project = state.projects.find((p) => p.id === item.project_id);
+    const partyText = item.direction === "incoming"
+      ? `From: ${escapeHtml(item.from_party || "—")} · To: ${escapeHtml(item.to_party || "—")}`
+      : `To: ${escapeHtml(item.to_party || "—")} · From: ${escapeHtml(item.from_party || "—")}`;
+    return `<article class="correspondence-item">
+      <div class="correspondence-main">
+        <div class="correspondence-topline">
+          <span class="direction-pill ${item.direction}">${item.direction}</span>
+          <span class="priority-pill ${item.priority || "normal"}">${item.priority || "normal"}</span>
+          <span class="letter-status ${item.status || "open"}">${correspondenceStatusLabel(item.status)}</span>
+          ${projectMap && project ? `<span class="status-pill approved">${escapeHtml(project.project_code || project.project_name)}</span>` : ""}
+        </div>
+        <h3>${escapeHtml(item.subject || "Untitled correspondence")}</h3>
+        <div class="correspondence-meta">
+          <span>Letter No.: ${escapeHtml(item.letter_number || "—")}</span>
+          <span>Letter Date: ${formatDate(item.letter_date)}</span>
+          <span>${item.direction === "incoming" ? "Received" : "Sent"}: ${formatDate(item.received_or_sent_date)}</span>
+          ${item.due_date ? `<span>Due: ${formatDate(item.due_date)}</span>` : ""}
+        </div>
+        <p class="correspondence-parties">${partyText}</p>
+        ${item.reference_details ? `<p class="correspondence-parties"><strong>Reference:</strong> ${escapeHtml(item.reference_details)}</p>` : ""}
+        ${item.action_required ? `<p class="correspondence-parties"><strong>Action:</strong> ${escapeHtml(item.action_required)}</p>` : ""}
+      </div>
+      <div class="correspondence-side">
+        <strong>${item.attachment_name ? escapeHtml(item.attachment_name) : "No attachment"}</strong>
+        <span>Updated ${formatDate(item.updated_at || item.created_at)}</span>
+        ${["admin","editor"].includes(state.profile?.role) ? `<button class="btn secondary edit-correspondence-button" data-id="${item.id}">Update status</button>` : ""}
+      </div>
+    </article>`;
+  }).join("")}</div>`;
+}
+
+function correspondenceDialog(projectId = "") {
+  return `<dialog id="correspondence-dialog" class="modal">
+    <form id="correspondence-form" class="modal-card" novalidate>
+      <div class="modal-heading"><div><p class="eyebrow">Correspondence</p><h2>Add letter</h2><p>Record incoming or outgoing official correspondence.</p></div><button class="icon-button" type="button" data-dialog-close>${icon("close")}</button></div>
+      <div class="form-section"><h3>Letter details</h3><div class="form-grid">
+        <label>Project *<select id="corr-project" required>${state.projects.map(p=>`<option value="${p.id}" ${projectId===p.id?"selected":""}>${escapeHtml(p.project_name)}</option>`).join("")}</select></label>
+        <label>Direction *<select id="corr-direction" required><option value="incoming">Incoming</option><option value="outgoing">Outgoing</option></select></label>
+        <label>Letter number<input id="corr-number" placeholder="Letter/reference number" /></label>
+        <label>Letter date<input id="corr-letter-date" type="date" /></label>
+        <label>Received/Sent date<input id="corr-movement-date" type="date" /></label>
+        <label>Priority<select id="corr-priority"><option value="normal">Normal</option><option value="low">Low</option><option value="high">High</option><option value="urgent">Urgent</option></select></label>
+        <label>From<input id="corr-from" placeholder="Sender/issuing authority" /></label>
+        <label>To<input id="corr-to" placeholder="Recipient/addressee" /></label>
+        <label class="wide">Subject *<textarea id="corr-subject" rows="2" required placeholder="Subject of the letter"></textarea></label>
+        <label class="wide">Reference details<textarea id="corr-reference" rows="2" placeholder="Previous letter/order/circular references"></textarea></label>
+        <label class="wide">Action required<textarea id="corr-action" rows="2" placeholder="Action to be taken"></textarea></label>
+        <label>Due date<input id="corr-due-date" type="date" /></label>
+        <label>Status<select id="corr-status"><option value="open">Open</option><option value="under_review">Under Review</option><option value="replied">Replied</option><option value="closed">Closed</option><option value="no_action">No Action</option></select></label>
+        <label>Attachment name<input id="corr-attachment-name" placeholder="e.g. Letter No. 123.pdf" /></label>
+        <label class="wide">Remarks<textarea id="corr-remarks" rows="2"></textarea></label>
+      </div></div>
+      <p id="correspondence-error" class="form-error"></p>
+      <div class="modal-actions"><button class="btn secondary" type="button" data-dialog-close>Cancel</button><button class="btn primary" id="save-correspondence-button" type="submit">Save letter</button></div>
+    </form>
+  </dialog>`;
+}
+
+function projectCorrespondenceModule(project) {
+  const records = state.correspondence.filter((item) => item.project_id === project.id);
+  return `<div><div class="module-header"><div><h2>Correspondence</h2><p>Incoming and outgoing letters linked to this project.</p></div>${["admin","editor"].includes(state.profile?.role) ? `<button class="btn primary" id="add-project-correspondence">${icon("plus")}Add letter</button>` : ""}</div>${correspondenceList(records, false)}${correspondenceDialog(project.id)}</div>`;
+}
+
+function globalCorrespondenceTemplate() {
+  const canEdit = ["admin","editor"].includes(state.profile?.role);
+  return `<div class="app-shell">${appHeader()}${sidebar("correspondence")}
+    <main class="main-content correspondence-page">
+      <div class="breadcrumb"><span>Dashboard</span><b>/</b>Correspondence</div>
+      <div class="admin-heading"><div><h1>Correspondence</h1><p>Division-wide register of incoming and outgoing letters.</p></div>${canEdit ? `<button class="btn primary" id="add-global-correspondence">${icon("plus")}Add letter</button>` : ""}</div>
+      <section class="admin-card">
+        <div class="admin-card-heading"><div><h2>Letter register</h2><p>${state.correspondence.length} record${state.correspondence.length===1?"":"s"} available.</p></div></div>
+        <div style="padding:18px 20px;">${correspondenceList(state.correspondence, true)}</div>
+      </section>
+      ${correspondenceDialog("")}
+    </main>
+  </div>`;
+}
+
+async function renderGlobalCorrespondence() {
+  root.innerHTML = `<div class="loading-screen"><span class="spinner dark"></span><p>Loading correspondence...</p></div>`;
+  try {
+    state.correspondence = await getCorrespondence();
+    root.innerHTML = globalCorrespondenceTemplate();
+    bindGlobalCorrespondenceEvents();
+  } catch (error) {
+    root.innerHTML = `<div class="loading-screen"><p>${escapeHtml(error.message)}</p></div>`;
+  }
+}
+
+function bindCorrespondenceDialogEvents(onSaved) {
+  const form = document.querySelector("#correspondence-form");
+  form?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!form.checkValidity()) { form.reportValidity(); return; }
+    const button = document.querySelector("#save-correspondence-button");
+    const error = document.querySelector("#correspondence-error");
+    const value = (id) => document.querySelector(id)?.value?.trim() || null;
+    setButtonLoading(button, true, "Saving..."); error.textContent = "";
+    try {
+      await createCorrespondence({
+        project_id: value("#corr-project"),
+        direction: value("#corr-direction"),
+        letter_number: value("#corr-number"),
+        letter_date: value("#corr-letter-date"),
+        received_or_sent_date: value("#corr-movement-date"),
+        priority: value("#corr-priority") || "normal",
+        from_party: value("#corr-from"),
+        to_party: value("#corr-to"),
+        subject: value("#corr-subject"),
+        reference_details: value("#corr-reference"),
+        action_required: value("#corr-action"),
+        due_date: value("#corr-due-date"),
+        status: value("#corr-status") || "open",
+        attachment_name: value("#corr-attachment-name"),
+        remarks: value("#corr-remarks"),
+      });
+      document.querySelector("#correspondence-dialog").close();
+      showToast("Correspondence saved.");
+      await onSaved();
+    } catch (err) { error.textContent = err.message; }
+    finally { setButtonLoading(button, false); }
+  });
+}
+
+function bindGlobalCorrespondenceEvents() {
+  bindCommonEvents();
+  document.querySelector("#add-global-correspondence")?.addEventListener("click", () => document.querySelector("#correspondence-dialog").showModal());
+  bindCorrespondenceDialogEvents(renderGlobalCorrespondence);
+  bindCorrespondenceStatusButtons(renderGlobalCorrespondence);
+}
+
+function bindCorrespondenceStatusButtons(onSaved) {
+  document.querySelectorAll(".edit-correspondence-button").forEach((button) => button.addEventListener("click", async () => {
+    const record = state.correspondence.find((item) => item.id === button.dataset.id);
+    if (!record) return;
+    const next = record.status === "open" ? "under_review" : record.status === "under_review" ? "replied" : record.status === "replied" ? "closed" : "open";
+    setButtonLoading(button, true, "Updating...");
+    try {
+      await updateCorrespondence(record.id, { status: next });
+      showToast(`Status changed to ${correspondenceStatusLabel(next)}.`);
+      await onSaved();
+    } catch (error) { showToast(error.message, "error"); }
+    finally { setButtonLoading(button, false); }
+  }));
+}
+
 function workspaceTemplate(project) {
   if (!project) return `<div class="app-shell">${appHeader()}${sidebar("projects")}<main class="main-content"><div class="empty-state"><h2>Project not found</h2><button class="btn primary" id="back-to-register">Back to Project Register</button></div></main></div>`;
   return `<div class="app-shell">${appHeader()}${sidebar("projects")}
@@ -1014,8 +1230,9 @@ async function renderWorkspace(projectId) {
   let project;
   if (state.demo) project = state.projects.find((item) => item.id === projectId);
   else {
-    try { project = await getProject(projectId); }
-    catch (error) { showToast(error.message, "error"); }
+    try {
+      [project, state.correspondence] = await Promise.all([getProject(projectId), getCorrespondence(projectId)]);
+    } catch (error) { showToast(error.message, "error"); }
   }
   root.innerHTML = workspaceTemplate(project);
   bindCommonEvents();
@@ -1026,10 +1243,24 @@ async function renderWorkspace(projectId) {
     const target = document.querySelector("#workspace-tab-content");
     const key = button.dataset.tab;
     target.innerHTML = key === "overview" ? workspaceOverview(project)
-      : key === "correspondence" ? emptyModule("No correspondence recorded", "Incoming and outgoing letters for this project will appear here.", "mail")
+      : key === "correspondence" ? projectCorrespondenceModule(project)
       : key === "inspections" ? emptyModule("No inspections recorded", "Create site inspections with observations, instructions and photographs.", "inspection")
       : key === "documents" ? emptyModule("No documents uploaded", "Store agreements, approvals, drawings, reports and orders in this workspace.", "document")
       : emptyModule("Project timeline", "Milestones and key events will be shown chronologically here.", "timeline");
+    if (key === "correspondence") {
+      document.querySelector("#add-project-correspondence")?.addEventListener("click", () => document.querySelector("#correspondence-dialog").showModal());
+      bindCorrespondenceDialogEvents(async () => {
+        state.correspondence = await getCorrespondence(project.id);
+        document.querySelector("#workspace-tab-content").innerHTML = projectCorrespondenceModule(project);
+        document.querySelector("#add-project-correspondence")?.addEventListener("click", () => document.querySelector("#correspondence-dialog").showModal());
+        bindCorrespondenceDialogEvents(async () => { location.hash = `#project/${project.id}`; });
+        bindCorrespondenceStatusButtons(async () => { location.hash = `#project/${project.id}`; });
+      });
+      bindCorrespondenceStatusButtons(async () => {
+        state.correspondence = await getCorrespondence(project.id);
+        document.querySelector("#workspace-tab-content").innerHTML = projectCorrespondenceModule(project);
+      });
+    }
   }));
 }
 
@@ -1045,7 +1276,8 @@ function bindCommonEvents() {
     if (state.profile?.role !== "admin") return showToast("Administrator access is required.", "error");
     location.hash = "#admin";
   }));
-  document.querySelectorAll(".nav-item:not([data-nav='projects']):not([data-nav='admin'])").forEach((button) => button.addEventListener("click", () => showToast(`${button.textContent.trim()} will be activated in the next module.`, "info")));
+  document.querySelectorAll("[data-nav='correspondence']").forEach((button) => button.addEventListener("click", () => { location.hash = "#correspondence"; }));
+  document.querySelectorAll(".nav-item:not([data-nav='projects']):not([data-nav='admin']):not([data-nav='correspondence'])").forEach((button) => button.addEventListener("click", () => showToast(`${button.textContent.trim()} will be activated in the next module.`, "info")));
 }
 
 function bindRegisterEvents() {
@@ -1315,6 +1547,7 @@ async function loadAuthenticatedData() {
 async function route() {
   const hash = location.hash || "#projects";
   if (hash === "#admin") return renderAdministration();
+  if (hash === "#correspondence") return renderGlobalCorrespondence();
   const match = hash.match(/^#project\/(.+)$/);
   if (match) return renderWorkspace(match[1]);
   renderRegister();
