@@ -111,6 +111,35 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); box-sh
 .notification-button { position: relative; display: grid; place-items: center; border: 0; background: transparent; color: #fff; }
 .notification-button span { position: absolute; top: -9px; right: -8px; min-width: 19px; height: 19px; display: grid; place-items: center; border: 2px solid #0b5188; border-radius: 999px; background: #ef4444; font-size: 10px; font-weight: 700; }
 .notification-button .notification-zero { display: none; }
+
+.calendar-page { display: grid; gap: 22px; }
+.calendar-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; }
+.calendar-nav { display: flex; align-items: center; gap: 9px; }
+.calendar-nav h2 { min-width: 180px; margin: 0; text-align: center; font-size: 19px; }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(110px, 1fr)); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; background: #fff; }
+.calendar-weekday { padding: 11px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); background: #f8fafc; color: #64748b; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+.calendar-day { min-height: 125px; padding: 9px; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); background: #fff; }
+.calendar-day:nth-child(7n), .calendar-weekday:nth-child(7n) { border-right: 0; }
+.calendar-day.outside { background: #f8fafc; color: #94a3b8; }
+.calendar-day.today { box-shadow: inset 0 0 0 2px var(--primary); }
+.calendar-date-number { display: block; margin-bottom: 7px; font-size: 12px; font-weight: 700; }
+.calendar-event-chip { display: block; width: 100%; margin-top: 5px; padding: 5px 6px; border: 0; border-radius: 6px; text-align: left; font-size: 9px; line-height: 1.25; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.calendar-event-chip.action_due { color: #991b1b; background: #fee2e2; }
+.calendar-event-chip.reminder { color: #9a3412; background: #ffedd5; }
+.calendar-event-chip.milestone { color: #1d4ed8; background: #dbeafe; }
+.calendar-event-chip.manual { color: #166534; background: #dcfce7; }
+.calendar-agenda { display: grid; gap: 10px; }
+.calendar-agenda-item { display: grid; grid-template-columns: 115px minmax(0,1fr) auto; gap: 14px; align-items: center; padding: 13px 14px; border: 1px solid var(--border); border-radius: 9px; background: #fff; }
+.calendar-agenda-item strong, .calendar-agenda-item span { display: block; }
+.calendar-agenda-item span { margin-top: 4px; color: var(--muted); font-size: 10px; }
+.calendar-agenda-item .btn { min-height: 34px; padding: 6px 10px; }
+@media (max-width: 980px) {
+  .calendar-grid { overflow-x: auto; grid-template-columns: repeat(7, minmax(125px, 1fr)); }
+}
+@media (max-width: 720px) {
+  .calendar-agenda-item { grid-template-columns: 1fr; }
+}
+
 .notification-page { display: grid; gap: 22px; }
 .notification-list { display: grid; gap: 11px; }
 .notification-item { display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: 14px; align-items: start; padding: 15px 16px; border: 1px solid var(--border); border-radius: 10px; background: #fff; }
@@ -559,6 +588,30 @@ function getOffices() {
 
 
 
+
+function getCalendarEvents() {
+  return rest("calendar_events?select=id,project_id,title,event_type,event_date,start_time,end_time,location,description,status,created_by,created_at,updated_at&order=event_date.asc,start_time.asc.nullslast");
+}
+
+async function createCalendarEvent(payload) {
+  const session = await ensureSession();
+  const rows = await rest("calendar_events", {
+    method: "POST",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify({ ...payload, created_by: session?.user?.id || null }),
+  });
+  return rows[0] || null;
+}
+
+async function updateCalendarEvent(id, payload) {
+  const rows = await rest(`calendar_events?id=eq.${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify({ ...payload, updated_at: new Date().toISOString() }),
+  });
+  return rows[0] || null;
+}
+
 function getNotificationStates() {
   return rest("notification_states?select=id,user_id,notification_key,read_at,dismissed_at,updated_at&order=updated_at.desc");
 }
@@ -892,6 +945,8 @@ const state = {
   actionProgressUpdates: [],
   notificationStates: [],
   notifications: [],
+  calendarEvents: [],
+  calendarViewDate: new Date(),
   demo: new URLSearchParams(location.search).get("demo") === "1",
   loading: true,
   filters: { query: "", highway: "all", status: "all", office: "all" },
@@ -1760,6 +1815,262 @@ function bindCorrespondenceStatusButtons(onSaved) {
 
 
 
+
+function isoDateLocal(date) {
+  const copy = new Date(date);
+  const year = copy.getFullYear();
+  const month = String(copy.getMonth() + 1).padStart(2, "0");
+  const day = String(copy.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function calendarItems() {
+  const items = [];
+
+  state.calendarEvents
+    .filter((event) => event.status !== "cancelled")
+    .forEach((event) => items.push({
+      id: `manual:${event.id}`,
+      sourceId: event.id,
+      kind: "manual",
+      date: event.event_date,
+      title: event.title,
+      detail: `${event.event_type}${event.location ? ` · ${event.location}` : ""}`,
+      projectId: event.project_id,
+      editable: ["admin", "editor"].includes(state.profile?.role),
+    }));
+
+  state.actionItems
+    .filter((action) => !["completed", "cancelled"].includes(action.status))
+    .forEach((action) => {
+      const project = state.projects.find((item) => item.id === action.project_id);
+      const projectLabel = project?.project_code || project?.project_name || "Project";
+      if (action.due_date) items.push({
+        id: `due:${action.id}`,
+        kind: "action_due",
+        date: action.due_date,
+        title: `Due: ${action.title}`,
+        detail: projectLabel,
+        actionId: action.id,
+        projectId: action.project_id,
+      });
+      if (action.reminder_date) items.push({
+        id: `reminder:${action.id}`,
+        kind: "reminder",
+        date: action.reminder_date,
+        title: `Reminder: ${action.title}`,
+        detail: projectLabel,
+        actionId: action.id,
+        projectId: action.project_id,
+      });
+    });
+
+  state.projects.forEach((project) => {
+    const milestones = [
+      ["sanction_date", "Sanction date"],
+      ["appointed_date", "Appointed date"],
+      ["scheduled_completion_date", "Scheduled completion"],
+      ["actual_completion_date", "Actual completion"],
+    ];
+    milestones.forEach(([field, label]) => {
+      if (!project[field]) return;
+      items.push({
+        id: `milestone:${project.id}:${field}`,
+        kind: "milestone",
+        date: project[field],
+        title: `${label}: ${project.project_name}`,
+        detail: project.project_code || "Project milestone",
+        projectId: project.id,
+      });
+    });
+  });
+
+  return items.sort((a, b) => String(a.date).localeCompare(String(b.date)) || a.title.localeCompare(b.title));
+}
+
+function monthLabel(date) {
+  return new Intl.DateTimeFormat("en-IN", { month: "long", year: "numeric" }).format(date);
+}
+
+function calendarMonthCells(viewDate) {
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+  const first = new Date(year, month, 1);
+  const gridStart = new Date(year, month, 1 - first.getDay());
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(gridStart);
+    date.setDate(gridStart.getDate() + index);
+    return date;
+  });
+}
+
+function calendarGrid(items) {
+  const view = state.calendarViewDate;
+  const todayIso = isoDateLocal(new Date());
+  const cells = calendarMonthCells(view);
+  const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  return `<div class="calendar-grid">
+    ${weekdays.map((day) => `<div class="calendar-weekday">${day}</div>`).join("")}
+    ${cells.map((date) => {
+      const iso = isoDateLocal(date);
+      const events = items.filter((item) => item.date === iso);
+      const outside = date.getMonth() !== view.getMonth();
+      return `<div class="calendar-day ${outside ? "outside" : ""} ${iso === todayIso ? "today" : ""}">
+        <span class="calendar-date-number">${date.getDate()}</span>
+        ${events.slice(0, 4).map((item) => `<button class="calendar-event-chip ${item.kind}" data-calendar-item="${escapeHtml(item.id)}" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</button>`).join("")}
+        ${events.length > 4 ? `<span class="field-help">+${events.length - 4} more</span>` : ""}
+      </div>`;
+    }).join("")}
+  </div>`;
+}
+
+function calendarAgenda(items) {
+  const view = state.calendarViewDate;
+  const month = view.getMonth();
+  const year = view.getFullYear();
+  const monthItems = items.filter((item) => {
+    const date = new Date(`${item.date}T00:00:00`);
+    return date.getMonth() === month && date.getFullYear() === year;
+  });
+  if (!monthItems.length) return `<div class="empty-state">${icon("calendar",42)}<h3>No events this month</h3><p>Add a meeting, inspection, hearing or review.</p></div>`;
+  return `<div class="calendar-agenda">${monthItems.map((item) => {
+    const project = state.projects.find((project) => project.id === item.projectId);
+    return `<article class="calendar-agenda-item">
+      <div><strong>${formatDate(item.date)}</strong><span>${escapeHtml(item.kind.replace("_", " "))}</span></div>
+      <div><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.detail || "")}${project ? ` · ${escapeHtml(project.project_name)}` : ""}</span></div>
+      <div>${item.editable ? `<button class="btn secondary edit-calendar-event" data-event-id="${item.sourceId}">Edit</button>` : item.actionId ? `<button class="btn secondary open-calendar-action">Open action</button>` : ""}</div>
+    </article>`;
+  }).join("")}</div>`;
+}
+
+function calendarEventDialog() {
+  return `<dialog id="calendar-event-dialog" class="modal compact-modal">
+    <form id="calendar-event-form" class="modal-card" novalidate>
+      <div class="modal-heading"><div><p class="eyebrow">Calendar</p><h2 id="calendar-event-title">Add event</h2><p>Schedule a meeting, inspection, hearing, submission or review.</p></div><button class="icon-button" type="button" data-dialog-close>${icon("close")}</button></div>
+      <input id="calendar-event-id" type="hidden" />
+      <div class="form-grid single">
+        <label>Title *<input id="calendar-title" required /></label>
+        <label>Project<select id="calendar-project"><option value="">Division-wide / No project</option>${state.projects.map((project) => `<option value="${project.id}">${escapeHtml(project.project_name)}</option>`).join("")}</select></label>
+        <label>Event type<select id="calendar-type"><option value="meeting">Meeting</option><option value="inspection">Inspection</option><option value="hearing">Hearing</option><option value="submission">Submission</option><option value="review">Review</option><option value="other">Other</option></select></label>
+        <label>Date *<input id="calendar-date" type="date" required /></label>
+        <label>Start time<input id="calendar-start-time" type="time" /></label>
+        <label>End time<input id="calendar-end-time" type="time" /></label>
+        <label>Location<input id="calendar-location" /></label>
+        <label>Status<select id="calendar-status"><option value="scheduled">Scheduled</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label>
+        <label>Description<textarea id="calendar-description" rows="3"></textarea></label>
+      </div>
+      <p id="calendar-error" class="form-error"></p>
+      <div class="modal-actions"><button class="btn secondary" type="button" data-dialog-close>Cancel</button><button class="btn primary" id="calendar-save-button" type="submit">Save event</button></div>
+    </form>
+  </dialog>`;
+}
+
+function calendarTemplate() {
+  const items = calendarItems();
+  const canEdit = ["admin", "editor"].includes(state.profile?.role);
+  return `<div class="app-shell">${appHeader()}${sidebar("calendar")}
+    <main class="main-content calendar-page">
+      <div class="breadcrumb"><span>Dashboard</span><b>/</b>Calendar</div>
+      <div class="calendar-toolbar">
+        <div><h1 style="margin:0;font-size:35px;letter-spacing:-.035em;">Calendar</h1><p style="margin:8px 0 0;color:var(--muted);">Actions, reminders, project milestones and scheduled official events.</p></div>
+        ${canEdit ? `<button class="btn primary" id="add-calendar-event">${icon("plus")}Add event</button>` : ""}
+      </div>
+      <section class="admin-card">
+        <div class="admin-card-heading">
+          <div class="calendar-nav"><button class="btn secondary" id="calendar-prev">Previous</button><h2>${monthLabel(state.calendarViewDate)}</h2><button class="btn secondary" id="calendar-next">Next</button><button class="btn secondary" id="calendar-today">Today</button></div>
+        </div>
+        <div style="padding:18px 20px;">${calendarGrid(items)}</div>
+      </section>
+      <section class="admin-card"><div class="admin-card-heading"><div><h2>Monthly agenda</h2><p>All events for ${monthLabel(state.calendarViewDate)}.</p></div></div><div style="padding:18px 20px;">${calendarAgenda(items)}</div></section>
+      ${calendarEventDialog()}
+    </main></div>`;
+}
+
+async function renderCalendar() {
+  root.innerHTML = `<div class="loading-screen"><span class="spinner dark"></span><p>Loading calendar...</p></div>`;
+  try {
+    [state.calendarEvents, state.actionItems] = await Promise.all([getCalendarEvents(), getActionItems()]);
+    root.innerHTML = calendarTemplate();
+    bindCalendarEvents();
+  } catch (error) {
+    root.innerHTML = `<div class="loading-screen"><p>${escapeHtml(error.message)}</p></div>`;
+  }
+}
+
+function populateCalendarForm(event = null) {
+  document.querySelector("#calendar-event-form")?.reset();
+  document.querySelector("#calendar-event-id").value = event?.id || "";
+  document.querySelector("#calendar-event-title").textContent = event ? "Edit event" : "Add event";
+  document.querySelector("#calendar-title").value = event?.title || "";
+  document.querySelector("#calendar-project").value = event?.project_id || "";
+  document.querySelector("#calendar-type").value = event?.event_type || "meeting";
+  document.querySelector("#calendar-date").value = event?.event_date || isoDateLocal(new Date());
+  document.querySelector("#calendar-start-time").value = event?.start_time?.slice(0, 5) || "";
+  document.querySelector("#calendar-end-time").value = event?.end_time?.slice(0, 5) || "";
+  document.querySelector("#calendar-location").value = event?.location || "";
+  document.querySelector("#calendar-status").value = event?.status || "scheduled";
+  document.querySelector("#calendar-description").value = event?.description || "";
+}
+
+function bindCalendarEvents() {
+  bindCommonEvents();
+  document.querySelector("#calendar-prev")?.addEventListener("click", () => {
+    state.calendarViewDate = new Date(state.calendarViewDate.getFullYear(), state.calendarViewDate.getMonth() - 1, 1);
+    root.innerHTML = calendarTemplate(); bindCalendarEvents();
+  });
+  document.querySelector("#calendar-next")?.addEventListener("click", () => {
+    state.calendarViewDate = new Date(state.calendarViewDate.getFullYear(), state.calendarViewDate.getMonth() + 1, 1);
+    root.innerHTML = calendarTemplate(); bindCalendarEvents();
+  });
+  document.querySelector("#calendar-today")?.addEventListener("click", () => {
+    state.calendarViewDate = new Date(); root.innerHTML = calendarTemplate(); bindCalendarEvents();
+  });
+
+  const dialog = document.querySelector("#calendar-event-dialog");
+  document.querySelector("#add-calendar-event")?.addEventListener("click", () => { populateCalendarForm(); dialog.showModal(); });
+  document.querySelectorAll(".edit-calendar-event").forEach((button) => button.addEventListener("click", () => {
+    const event = state.calendarEvents.find((item) => item.id === button.dataset.eventId);
+    if (!event) return;
+    populateCalendarForm(event); dialog.showModal();
+  }));
+  document.querySelectorAll(".open-calendar-action").forEach((button) => button.addEventListener("click", () => { location.hash = "#actions"; }));
+  document.querySelectorAll(".calendar-event-chip").forEach((button) => button.addEventListener("click", () => {
+    const item = calendarItems().find((entry) => entry.id === button.dataset.calendarItem);
+    if (!item) return;
+    if (item.kind === "manual" && item.editable) {
+      const event = state.calendarEvents.find((entry) => entry.id === item.sourceId);
+      populateCalendarForm(event); dialog.showModal();
+    } else if (item.actionId) location.hash = "#actions";
+    else if (item.projectId) location.hash = `#project/${item.projectId}`;
+  }));
+
+  document.querySelector("#calendar-event-form")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    if (!form.checkValidity()) { form.reportValidity(); return; }
+    const id = document.querySelector("#calendar-event-id").value;
+    const payload = {
+      title: document.querySelector("#calendar-title").value.trim(),
+      project_id: document.querySelector("#calendar-project").value || null,
+      event_type: document.querySelector("#calendar-type").value,
+      event_date: document.querySelector("#calendar-date").value,
+      start_time: document.querySelector("#calendar-start-time").value || null,
+      end_time: document.querySelector("#calendar-end-time").value || null,
+      location: document.querySelector("#calendar-location").value.trim() || null,
+      status: document.querySelector("#calendar-status").value,
+      description: document.querySelector("#calendar-description").value.trim() || null,
+    };
+    const button = document.querySelector("#calendar-save-button");
+    const error = document.querySelector("#calendar-error");
+    setButtonLoading(button, true, "Saving..."); error.textContent = "";
+    try {
+      if (id) await updateCalendarEvent(id, payload); else await createCalendarEvent(payload);
+      dialog.close(); showToast(id ? "Calendar event updated." : "Calendar event added."); await renderCalendar();
+    } catch (err) { error.textContent = err.message; }
+    finally { setButtonLoading(button, false); }
+  });
+}
+
 function notificationStateFor(key) {
   return state.notificationStates.find((item) => item.notification_key === key) || null;
 }
@@ -2279,7 +2590,8 @@ function bindCommonEvents() {
   }));
   document.querySelectorAll("[data-nav='correspondence']").forEach((button) => button.addEventListener("click", () => { location.hash = "#correspondence"; }));
   document.querySelectorAll("[data-nav='actions']").forEach((button) => button.addEventListener("click", () => { location.hash = "#actions"; }));
-  document.querySelectorAll(".nav-item:not([data-nav='projects']):not([data-nav='admin']):not([data-nav='correspondence']):not([data-nav='actions'])").forEach((button) => button.addEventListener("click", () => showToast(`${button.textContent.trim()} will be activated in the next module.`, "info")));
+  document.querySelectorAll("[data-nav='calendar']").forEach((button) => button.addEventListener("click", () => { location.hash = "#calendar"; }));
+  document.querySelectorAll(".nav-item:not([data-nav='projects']):not([data-nav='admin']):not([data-nav='correspondence']):not([data-nav='actions']):not([data-nav='calendar'])").forEach((button) => button.addEventListener("click", () => showToast(`${button.textContent.trim()} will be activated in the next module.`, "info")));
 }
 
 function bindRegisterEvents() {
@@ -2556,6 +2868,7 @@ async function route() {
   if (hash === "#correspondence") return renderGlobalCorrespondence();
   if (hash === "#actions") return renderActionPage();
   if (hash === "#notifications") return renderNotifications();
+  if (hash === "#calendar") return renderCalendar();
   const match = hash.match(/^#project\/(.+)$/);
   if (match) return renderWorkspace(match[1]);
   renderRegister();
