@@ -110,6 +110,24 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); box-sh
 .topbar-actions { justify-self: end; display: flex; align-items: center; gap: 18px; }
 .notification-button { position: relative; display: grid; place-items: center; border: 0; background: transparent; color: #fff; }
 .notification-button span { position: absolute; top: -9px; right: -8px; min-width: 19px; height: 19px; display: grid; place-items: center; border: 2px solid #0b5188; border-radius: 999px; background: #ef4444; font-size: 10px; font-weight: 700; }
+.notification-button .notification-zero { display: none; }
+.notification-page { display: grid; gap: 22px; }
+.notification-list { display: grid; gap: 11px; }
+.notification-item { display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: 14px; align-items: start; padding: 15px 16px; border: 1px solid var(--border); border-radius: 10px; background: #fff; }
+.notification-item.unread { border-left: 4px solid var(--primary); background: #fbfdff; }
+.notification-item.dismissed { display: none; }
+.notification-icon { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 9px; background: #edf3f9; color: var(--primary); }
+.notification-icon.overdue { color: #b91c1c; background: #fee2e2; }
+.notification-icon.due_soon { color: #9a3412; background: #ffedd5; }
+.notification-icon.verification { color: #6d28d9; background: #ede9fe; }
+.notification-icon.assigned { color: #166534; background: #dcfce7; }
+.notification-item h3 { margin: 0; font-size: 14px; }
+.notification-item p { margin: 5px 0 0; color: #475569; font-size: 12px; line-height: 1.5; }
+.notification-item small { display: block; margin-top: 7px; color: var(--muted); font-size: 10px; }
+.notification-actions { display: flex; gap: 7px; flex-wrap: wrap; justify-content: flex-end; }
+.notification-actions .btn { min-height: 34px; padding: 6px 10px; }
+@media (max-width:720px){.notification-item{grid-template-columns:auto 1fr}.notification-actions{grid-column:1/-1;justify-content:flex-start}}
+
 .user-menu { display: flex; align-items: center; gap: 10px; }
 .avatar { width: 42px; height: 42px; display: grid; place-items: center; border: 2px solid rgba(255,255,255,.65); border-radius: 50%; background: rgba(255,255,255,.16); font-weight: 700; }
 .user-menu strong, .user-menu span { display: block; }
@@ -540,6 +558,28 @@ function getOffices() {
 
 
 
+
+function getNotificationStates() {
+  return rest("notification_states?select=id,user_id,notification_key,read_at,dismissed_at,updated_at&order=updated_at.desc");
+}
+
+async function saveNotificationState(notificationKey, payload) {
+  const session = await ensureSession();
+  const userId = session?.user?.id;
+  if (!userId) throw new Error("Your session has expired.");
+  const rows = await rest("notification_states?on_conflict=user_id,notification_key", {
+    method: "POST",
+    headers: { Prefer: "return=representation,resolution=merge-duplicates" },
+    body: JSON.stringify({
+      user_id: userId,
+      notification_key: notificationKey,
+      ...payload,
+      updated_at: new Date().toISOString(),
+    }),
+  });
+  return rows[0] || null;
+}
+
 function getActionItems(projectId = null) {
   const projectFilter = projectId ? `&project_id=eq.${encodeURIComponent(projectId)}` : "";
   return rest(`action_items?select=id,project_id,correspondence_id,title,description,assigned_to,assigned_by,priority,status,due_date,reminder_date,progress_percent,verified_progress_percent,completion_note,completed_at,created_by,created_at,updated_at,verifier_id,responsibility_mode,issuer_note&order=due_date.asc.nullslast,created_at.desc${projectFilter}`);
@@ -850,6 +890,8 @@ const state = {
   projectJurisdictions: [],
   actionAssignees: [],
   actionProgressUpdates: [],
+  notificationStates: [],
+  notifications: [],
   demo: new URLSearchParams(location.search).get("demo") === "1",
   loading: true,
   filters: { query: "", highway: "all", status: "all", office: "all" },
@@ -1044,7 +1086,7 @@ function appHeader() {
   return `<header class="topbar">
     <div class="brand-lockup"><div class="emblem">NH</div><div><strong>MARGDARSHI</strong><span>National Highway Division Dhule</span></div></div>
     <div class="global-search">${icon("search", 19)}<input aria-label="Global search" placeholder="Search projects, letters, cases..." /><kbd>Ctrl K</kbd></div>
-    <div class="topbar-actions"><button class="notification-button" aria-label="Notifications">${icon("bell")}<span>3</span></button><div class="user-menu"><div class="avatar">${initials}</div><div><strong>${name}</strong><span>${designation}</span></div></div><button class="icon-button" id="logout-button" title="Sign out">${icon("logout")}</button></div>
+    <div class="topbar-actions"><button class="notification-button" id="notification-button" aria-label="Notifications">${icon("bell")}<span class="${unreadNotificationCount() ? "" : "notification-zero"}">${unreadNotificationCount()}</span></button><div class="user-menu"><div class="avatar">${initials}</div><div><strong>${name}</strong><span>${designation}</span></div></div><button class="icon-button" id="logout-button" title="Sign out">${icon("logout")}</button></div>
   </header>`;
 }
 
@@ -1717,6 +1759,170 @@ function bindCorrespondenceStatusButtons(onSaved) {
 }
 
 
+
+function notificationStateFor(key) {
+  return state.notificationStates.find((item) => item.notification_key === key) || null;
+}
+
+function buildNotifications() {
+  const results = [];
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const currentUserId = state.profile?.id;
+
+  state.actionItems.forEach((action) => {
+    if (["completed", "cancelled"].includes(action.status)) return;
+    const project = state.projects.find((item) => item.id === action.project_id);
+    const projectLabel = project?.project_code || project?.project_name || "Project";
+    const assignees = actionAssigneesFor(action.id);
+    const assignedToMe = assignees.some((item) => item.user_id === currentUserId);
+
+    if (assignedToMe) {
+      results.push({
+        key: `assigned:${action.id}:${currentUserId}`,
+        type: "assigned",
+        title: `Action assigned: ${action.title}`,
+        message: `${projectLabel}${action.due_date ? ` · Due ${formatDate(action.due_date)}` : ""}`,
+        actionId: action.id,
+        projectId: action.project_id,
+        sortDate: action.updated_at || action.created_at,
+      });
+    }
+
+    if (action.due_date && (assignedToMe || canVerifyAction(action) || canControlAction(action))) {
+      const due = new Date(`${action.due_date}T00:00:00`);
+      const days = Math.round((due - today) / 86400000);
+      if (days < 0) {
+        results.push({
+          key: `overdue:${action.id}:${action.due_date}`,
+          type: "overdue",
+          title: `Overdue action: ${action.title}`,
+          message: `${projectLabel} · Due date was ${formatDate(action.due_date)}`,
+          actionId: action.id,
+          projectId: action.project_id,
+          sortDate: action.due_date,
+        });
+      } else if (days <= 3) {
+        results.push({
+          key: `due-soon:${action.id}:${action.due_date}`,
+          type: "due_soon",
+          title: `Action due ${days === 0 ? "today" : `in ${days} day${days === 1 ? "" : "s"}`}: ${action.title}`,
+          message: `${projectLabel} · Due ${formatDate(action.due_date)}`,
+          actionId: action.id,
+          projectId: action.project_id,
+          sortDate: action.due_date,
+        });
+      }
+    }
+  });
+
+  state.actionProgressUpdates
+    .filter((update) => update.verification_status === "pending")
+    .forEach((update) => {
+      const action = state.actionItems.find((item) => item.id === update.action_id);
+      if (!action || !canVerifyAction(action)) return;
+      results.push({
+        key: `verification:${update.id}`,
+        type: "verification",
+        title: `Progress verification pending: ${action.title}`,
+        message: `${actionUserName(update.submitted_by)} claimed ${update.claimed_progress_percent}% progress.`,
+        actionId: action.id,
+        projectId: action.project_id,
+        sortDate: update.submitted_at,
+      });
+    });
+
+  return results
+    .map((item) => ({ ...item, state: notificationStateFor(item.key) }))
+    .filter((item) => !item.state?.dismissed_at)
+    .sort((a, b) => String(b.sortDate || "").localeCompare(String(a.sortDate || "")));
+}
+
+function unreadNotificationCount() {
+  return (state.notifications || []).filter((item) => !item.state?.read_at && !item.state?.dismissed_at).length;
+}
+
+function notificationTypeLabel(type) {
+  return ({ assigned: "Assigned action", overdue: "Overdue", due_soon: "Due soon", verification: "Verification" })[type] || type;
+}
+
+function notificationIcon(type) {
+  return type === "verification" ? "check" : type === "overdue" ? "bell" : type === "due_soon" ? "calendar" : "clipboard";
+}
+
+function notificationsTemplate() {
+  const unread = unreadNotificationCount();
+  return `<div class="app-shell">${appHeader()}${sidebar("")}
+    <main class="main-content notification-page">
+      <div class="breadcrumb"><span>Dashboard</span><b>/</b>Notifications</div>
+      <div class="admin-heading"><div><h1>Notifications and Reminders</h1><p>Assigned actions, due dates, overdue items and progress awaiting verification.</p></div>${unread ? `<button class="btn secondary" id="mark-all-notifications-read">Mark all read</button>` : ""}</div>
+      <section class="action-summary-grid">
+        <div class="admin-metric"><span>Unread</span><strong>${unread}</strong></div>
+        <div class="admin-metric"><span>Total active alerts</span><strong>${state.notifications.length}</strong></div>
+        <div class="admin-metric"><span>Overdue alerts</span><strong>${state.notifications.filter((n)=>n.type==="overdue").length}</strong></div>
+        <div class="admin-metric"><span>Verification alerts</span><strong>${state.notifications.filter((n)=>n.type==="verification").length}</strong></div>
+      </section>
+      <section class="admin-card"><div class="admin-card-heading"><div><h2>Notification centre</h2><p>Dismissed alerts remain hidden unless the underlying condition changes.</p></div></div>
+        <div style="padding:18px 20px;">
+          ${state.notifications.length ? `<div class="notification-list">${state.notifications.map((item) => `<article class="notification-item ${item.state?.read_at ? "" : "unread"}">
+            <div class="notification-icon ${item.type}">${icon(notificationIcon(item.type))}</div>
+            <div><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(item.message)}</p><small>${escapeHtml(notificationTypeLabel(item.type))}</small></div>
+            <div class="notification-actions">
+              ${!item.state?.read_at ? `<button class="btn secondary notification-read-button" data-key="${escapeHtml(item.key)}">Mark read</button>` : ""}
+              <button class="btn secondary notification-open-button" data-action-id="${item.actionId}" data-project-id="${item.projectId}">Open action</button>
+              <button class="btn secondary notification-dismiss-button" data-key="${escapeHtml(item.key)}">Dismiss</button>
+            </div>
+          </article>`).join("")}</div>` : `<div class="empty-state">${icon("bell",42)}<h3>No active notifications</h3><p>You are up to date.</p></div>`}
+        </div>
+      </section>
+    </main></div>`;
+}
+
+async function renderNotifications() {
+  root.innerHTML = `<div class="loading-screen"><span class="spinner dark"></span><p>Loading notifications...</p></div>`;
+  try {
+    await loadActionData();
+    state.notificationStates = await getNotificationStates();
+    state.notifications = buildNotifications();
+    root.innerHTML = notificationsTemplate();
+    bindNotificationEvents();
+  } catch (error) {
+    root.innerHTML = `<div class="loading-screen"><p>${escapeHtml(error.message)}</p></div>`;
+  }
+}
+
+function bindNotificationEvents() {
+  bindCommonEvents();
+  document.querySelectorAll(".notification-read-button").forEach((button) => button.addEventListener("click", async () => {
+    setButtonLoading(button, true, "Saving...");
+    try { await saveNotificationState(button.dataset.key, { read_at: new Date().toISOString(), dismissed_at: null }); await renderNotifications(); }
+    catch (error) { showToast(error.message, "error"); }
+  }));
+  document.querySelectorAll(".notification-dismiss-button").forEach((button) => button.addEventListener("click", async () => {
+    setButtonLoading(button, true, "Saving...");
+    try { await saveNotificationState(button.dataset.key, { read_at: new Date().toISOString(), dismissed_at: new Date().toISOString() }); await renderNotifications(); }
+    catch (error) { showToast(error.message, "error"); }
+  }));
+  document.querySelectorAll(".notification-open-button").forEach((button) => button.addEventListener("click", async () => {
+    const actionId = button.dataset.actionId;
+    await saveNotificationState(
+      state.notifications.find((item) => item.actionId === actionId)?.key || `opened:${actionId}`,
+      { read_at: new Date().toISOString(), dismissed_at: null }
+    ).catch(() => {});
+    location.hash = "#actions";
+  }));
+  document.querySelector("#mark-all-notifications-read")?.addEventListener("click", async (event) => {
+    const button = event.currentTarget;
+    setButtonLoading(button, true, "Saving...");
+    try {
+      for (const item of state.notifications.filter((n) => !n.state?.read_at)) {
+        await saveNotificationState(item.key, { read_at: new Date().toISOString(), dismissed_at: null });
+      }
+      await renderNotifications();
+    } catch (error) { showToast(error.message, "error"); }
+    finally { setButtonLoading(button, false); }
+  });
+}
+
 function actionStatusLabel(status) {
   return ({ open: "Open", in_progress: "In Progress", awaiting_response: "Awaiting Response", completed: "Completed", cancelled: "Cancelled" })[status] || status || "Open";
 }
@@ -2059,6 +2265,7 @@ async function renderWorkspace(projectId) {
 }
 
 function bindCommonEvents() {
+  document.querySelector("#notification-button")?.addEventListener("click", () => { location.hash = "#notifications"; });
   document.querySelector("#logout-button")?.addEventListener("click", async () => {
     if (state.demo) { location.href = "./"; return; }
     await signOut();
@@ -2337,6 +2544,10 @@ function bindLoginEvents() {
 
 async function loadAuthenticatedData() {
   [state.profile, state.projects, state.highways, state.offices, state.directoryEntities] = await Promise.all([getProfile(), getProjects(), getHighways(), getOffices(), getDirectoryEntities()]);
+  [state.actionItems, state.assignableUsers, state.projectJurisdictions, state.actionAssignees, state.actionProgressUpdates, state.notificationStates] = await Promise.all([
+    getActionItems(), getAssignableUsers(), getProjectJurisdictions(), getActionAssignees(), getActionProgressUpdates(), getNotificationStates()
+  ]);
+  state.notifications = buildNotifications();
 }
 
 async function route() {
@@ -2344,6 +2555,7 @@ async function route() {
   if (hash === "#admin") return renderAdministration();
   if (hash === "#correspondence") return renderGlobalCorrespondence();
   if (hash === "#actions") return renderActionPage();
+  if (hash === "#notifications") return renderNotifications();
   const match = hash.match(/^#project\/(.+)$/);
   if (match) return renderWorkspace(match[1]);
   renderRegister();
