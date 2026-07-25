@@ -198,6 +198,24 @@ h1, h2, h3, p { overflow-wrap: anywhere; }
 .attachment-help { display: block; margin-top: 6px; color: var(--muted); font-size: 10px; font-weight: 400; line-height: 1.45; }
 .attachment-actions { display: flex; justify-content: flex-end; gap: 7px; flex-wrap: wrap; margin-top: 10px; }
 .action-page { display: grid; gap: 22px; }
+.assignee-picker { display: grid; gap: 8px; max-height: 220px; overflow: auto; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: #f8fafc; }
+.assignee-option { display: grid; grid-template-columns: auto 1fr; gap: 9px; align-items: start; padding: 8px; border-radius: 7px; background: #fff; border: 1px solid #e5eaf0; }
+.assignee-option input { width: auto; margin-top: 3px; }
+.assignee-option strong, .assignee-option span { display: block; }
+.assignee-option span { margin-top: 3px; color: var(--muted); font-size: 10px; }
+.progress-history { display: grid; gap: 10px; margin-top: 13px; }
+.progress-update { padding: 12px 13px; border: 1px solid var(--border); border-radius: 9px; background: #fbfcfd; }
+.progress-update.pending { border-left: 4px solid #f59e0b; }
+.progress-update.approved { border-left: 4px solid #16a34a; }
+.progress-update.returned, .progress-update.rejected { border-left: 4px solid #dc2626; }
+.progress-update h4 { margin: 0 0 6px; font-size: 12px; }
+.progress-update p { margin: 5px 0 0; color: #475569; font-size: 11px; line-height: 1.5; }
+.progress-update-actions { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 10px; }
+.jurisdiction-list { display: grid; gap: 9px; }
+.jurisdiction-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 12px; align-items: center; padding: 12px 13px; border: 1px solid var(--border); border-radius: 9px; background: #fff; }
+.jurisdiction-row strong, .jurisdiction-row span { display: block; }
+.jurisdiction-row span { margin-top: 3px; color: var(--muted); font-size: 10px; }
+
 .action-filters { display: flex; gap: 10px; flex-wrap: wrap; }
 .action-filters select, .action-filters input { width: auto; min-width: 165px; }
 .action-list { display: grid; gap: 12px; }
@@ -524,11 +542,23 @@ function getOffices() {
 
 function getActionItems(projectId = null) {
   const projectFilter = projectId ? `&project_id=eq.${encodeURIComponent(projectId)}` : "";
-  return rest(`action_items?select=id,project_id,correspondence_id,title,description,assigned_to,assigned_by,priority,status,due_date,reminder_date,progress_percent,completion_note,completed_at,created_by,created_at,updated_at&order=due_date.asc.nullslast,created_at.desc${projectFilter}`);
+  return rest(`action_items?select=id,project_id,correspondence_id,title,description,assigned_to,assigned_by,priority,status,due_date,reminder_date,progress_percent,verified_progress_percent,completion_note,completed_at,created_by,created_at,updated_at,verifier_id,responsibility_mode,issuer_note&order=due_date.asc.nullslast,created_at.desc${projectFilter}`);
 }
 
 function getAssignableUsers() {
   return rest("profiles?select=id,full_name,designation,email,office_name,role&account_status=eq.approved&is_active=eq.true&order=full_name.asc");
+}
+
+function getProjectJurisdictions() {
+  return rest("project_user_access?select=id,project_id,user_id,access_type,can_receive_actions,effective_from,effective_to,is_active,created_at&is_active=eq.true&order=created_at.desc");
+}
+
+function getActionAssignees() {
+  return rest("action_assignees?select=id,action_id,user_id,responsibility_type,responsibility_note,is_active,assigned_by,assigned_at&is_active=eq.true&order=responsibility_type.asc,assigned_at.asc");
+}
+
+function getActionProgressUpdates() {
+  return rest("action_progress_updates?select=id,action_id,submitted_by,claimed_progress_percent,work_done,remaining_work,delay_reason,submitted_at,verification_status,verified_progress_percent,verification_remarks,verified_by,verified_at&order=submitted_at.desc");
 }
 
 async function createActionItem(payload) {
@@ -546,6 +576,63 @@ async function updateActionItem(id, payload) {
     method: "PATCH",
     headers: { Prefer: "return=representation" },
     body: JSON.stringify({ ...payload, updated_at: new Date().toISOString() }),
+  });
+  return rows[0] || null;
+}
+
+async function createActionAssignee(payload) {
+  const session = await ensureSession();
+  const rows = await rest("action_assignees", {
+    method: "POST",
+    headers: { Prefer: "return=representation,resolution=merge-duplicates" },
+    body: JSON.stringify({ ...payload, assigned_by: session?.user?.id || null }),
+  });
+  return rows[0] || null;
+}
+
+async function deactivateActionAssignees(actionId) {
+  return rest(`action_assignees?action_id=eq.${encodeURIComponent(actionId)}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify({ is_active: false }),
+  });
+}
+
+async function createProgressUpdate(payload) {
+  const session = await ensureSession();
+  const rows = await rest("action_progress_updates", {
+    method: "POST",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify({ ...payload, submitted_by: session?.user?.id || null }),
+  });
+  return rows[0] || null;
+}
+
+async function verifyProgressUpdate(id, payload) {
+  const session = await ensureSession();
+  const rows = await rest(`action_progress_updates?id=eq.${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify({ ...payload, verified_by: session?.user?.id || null, verified_at: new Date().toISOString() }),
+  });
+  return rows[0] || null;
+}
+
+async function createProjectJurisdiction(payload) {
+  const session = await ensureSession();
+  const rows = await rest("project_user_access", {
+    method: "POST",
+    headers: { Prefer: "return=representation,resolution=merge-duplicates" },
+    body: JSON.stringify({ ...payload, created_by: session?.user?.id || null }),
+  });
+  return rows[0] || null;
+}
+
+async function deactivateProjectJurisdiction(id) {
+  const rows = await rest(`project_user_access?id=eq.${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify({ is_active: false, updated_at: new Date().toISOString() }),
   });
   return rows[0] || null;
 }
@@ -760,6 +847,9 @@ const state = {
   directoryEntities: [],
   actionItems: [],
   assignableUsers: [],
+  projectJurisdictions: [],
+  actionAssignees: [],
+  actionProgressUpdates: [],
   demo: new URLSearchParams(location.search).get("demo") === "1",
   loading: true,
   filters: { query: "", highway: "all", status: "all", office: "all" },
@@ -1151,6 +1241,11 @@ function directoryDialog() {
   </dialog>`;
 }
 
+
+function jurisdictionSection() {
+  return `<section class="admin-card"><div class="admin-card-heading"><div><h2>Project jurisdiction</h2><p>Only officers mapped here can receive actions for that project.</p></div><button class="btn primary" id="add-jurisdiction-button">${icon("plus")}Add jurisdiction</button></div><div class="jurisdiction-list" style="padding:18px 20px;">${state.projectJurisdictions.length ? state.projectJurisdictions.map((item)=>{const user=state.adminUsers.find((u)=>u.id===item.user_id);const project=state.projects.find((p)=>p.id===item.project_id);return `<div class="jurisdiction-row"><div><strong>${escapeHtml(user?.full_name||"User")} — ${escapeHtml(project?.project_name||"Project")}</strong><span>${escapeHtml(item.access_type)} · ${item.can_receive_actions?"Can receive actions":"View only"}</span></div><button class="btn secondary remove-jurisdiction-button" data-id="${item.id}">Remove</button></div>`;}).join("") : `<div class="empty-state"><h3>No project jurisdiction mapped</h3><p>Add officers to the projects under their jurisdiction.</p></div>`}</div></section>
+  <dialog id="jurisdiction-dialog" class="modal compact-modal"><form id="jurisdiction-form" class="modal-card" novalidate><div class="modal-heading"><div><p class="eyebrow">Project jurisdiction</p><h2>Add officer jurisdiction</h2></div><button class="icon-button" type="button" data-dialog-close>${icon("close")}</button></div><div class="form-grid single"><label>Officer<select id="jurisdiction-user" required>${state.adminUsers.filter((u)=>u.account_status==="approved"&&u.is_active).map((u)=>`<option value="${u.id}">${escapeHtml(u.full_name)} — ${escapeHtml(u.designation||"User")}</option>`).join("")}</select></label><label>Project<select id="jurisdiction-project" required>${state.projects.map((p)=>`<option value="${p.id}">${escapeHtml(p.project_name)}</option>`).join("")}</select></label><label>Access type<select id="jurisdiction-type"><option value="jurisdiction">Regular jurisdiction</option><option value="additional_charge">Additional charge</option><option value="explicit">Explicit project access</option></select></label><label style="display:flex;grid-template-columns:auto 1fr;gap:9px;align-items:center;"><input id="jurisdiction-can-receive" type="checkbox" checked style="width:auto;"/>Can receive actions</label></div><p id="jurisdiction-error" class="form-error"></p><div class="modal-actions"><button class="btn secondary" type="button" data-dialog-close>Cancel</button><button class="btn primary" id="jurisdiction-save" type="submit">Save jurisdiction</button></div></form></dialog>`;
+}
 function administrationTemplate() {
   const users = state.adminUsers;
   const pending = users.filter((user) => user.account_status === "pending").length;
@@ -1196,6 +1291,7 @@ function administrationTemplate() {
         <div class="admin-card-heading"><div><h2>Official office and organisation directory</h2><p>Frequently used entries appear first in correspondence dropdowns; all others are alphabetical.</p></div><button class="btn primary" id="add-directory-button">${icon("plus")}Add entry</button></div>
         <div style="padding:18px 20px;">${directoryEntityCards()}</div>
       </section>
+      ${jurisdictionSection()}
     </main>
     ${directoryDialog()}
     <dialog id="assignment-dialog" class="modal compact-modal"><form id="assignment-form" class="modal-card" novalidate>
@@ -1223,7 +1319,7 @@ async function renderAdministration() {
   }
   root.innerHTML = `<div class="loading-screen"><span class="spinner dark"></span><p>Loading administration...</p></div>`;
   try {
-    [state.adminUsers, state.assignments, state.directoryEntities] = await Promise.all([getAdminUsers(), getUserAssignments(), getDirectoryEntities(true)]);
+    [state.adminUsers, state.assignments, state.directoryEntities, state.projectJurisdictions] = await Promise.all([getAdminUsers(), getUserAssignments(), getDirectoryEntities(true), getProjectJurisdictions()]);
     root.innerHTML = administrationTemplate();
     bindAdministrationEvents();
   } catch (error) {
@@ -1368,13 +1464,14 @@ function bindAdministrationEvents() {
 
   document.querySelectorAll(".toggle-directory-button").forEach((button) => button.addEventListener("click", async () => {
     setButtonLoading(button, true, "Saving...");
-    try {
-      await updateDirectoryEntity(button.dataset.directoryId, { is_active: button.dataset.nextActive === "true" });
-      showToast("Directory entry updated.");
-      await renderAdministration();
-    } catch (error) { showToast(error.message, "error"); }
-    finally { setButtonLoading(button, false); }
+    try { await updateDirectoryEntity(button.dataset.directoryId, { is_active: button.dataset.nextActive === "true" }); showToast("Directory entry updated."); await renderAdministration(); }
+    catch (error) { showToast(error.message, "error"); } finally { setButtonLoading(button, false); }
   }));
+
+  const jurisdictionDialog = document.querySelector("#jurisdiction-dialog");
+  document.querySelector("#add-jurisdiction-button")?.addEventListener("click",()=>jurisdictionDialog.showModal());
+  document.querySelector("#jurisdiction-form")?.addEventListener("submit",async(event)=>{event.preventDefault();const form=event.currentTarget;if(!form.checkValidity()){form.reportValidity();return;}const button=document.querySelector("#jurisdiction-save");const error=document.querySelector("#jurisdiction-error");setButtonLoading(button,true,"Saving...");error.textContent="";try{await createProjectJurisdiction({user_id:document.querySelector("#jurisdiction-user").value,project_id:document.querySelector("#jurisdiction-project").value,access_type:document.querySelector("#jurisdiction-type").value,can_receive_actions:document.querySelector("#jurisdiction-can-receive").checked,is_active:true});jurisdictionDialog.close();showToast("Project jurisdiction saved.");await renderAdministration();}catch(err){error.textContent=err.message;}finally{setButtonLoading(button,false);}});
+  document.querySelectorAll(".remove-jurisdiction-button").forEach((button)=>button.addEventListener("click",async()=>{setButtonLoading(button,true,"Removing...");try{await deactivateProjectJurisdiction(button.dataset.id);showToast("Jurisdiction removed.");await renderAdministration();}catch(error){showToast(error.message,"error");}finally{setButtonLoading(button,false);}}));
 }
 
 
@@ -1626,7 +1723,22 @@ function actionStatusLabel(status) {
 
 function actionUserName(userId) {
   const user = state.assignableUsers.find((item) => item.id === userId);
-  return user?.full_name || "Unassigned";
+  return user?.full_name || "Unknown user";
+}
+
+function actionAssigneesFor(actionId) {
+  return state.actionAssignees.filter((item) => item.action_id === actionId && item.is_active);
+}
+
+function actionUpdatesFor(actionId) {
+  return state.actionProgressUpdates.filter((item) => item.action_id === actionId);
+}
+
+function jurisdictionUsersForProject(projectId) {
+  const eligibleIds = new Set(state.projectJurisdictions
+    .filter((item) => item.project_id === projectId && item.is_active && item.can_receive_actions)
+    .map((item) => item.user_id));
+  return state.assignableUsers.filter((user) => eligibleIds.has(user.id));
 }
 
 function actionTimingClass(item) {
@@ -1640,12 +1752,38 @@ function actionTimingClass(item) {
   return "";
 }
 
+function canControlAction(item) {
+  return state.profile?.role === "admin" || item.assigned_by === state.profile?.id || item.created_by === state.profile?.id;
+}
+
+function canSubmitProgress(item) {
+  return actionAssigneesFor(item.id).some((assignment) => assignment.user_id === state.profile?.id);
+}
+
+function canVerifyAction(item) {
+  return state.profile?.role === "admin" || item.verifier_id === state.profile?.id || item.assigned_by === state.profile?.id || item.created_by === state.profile?.id;
+}
+
+function progressHistory(item) {
+  const updates = actionUpdatesFor(item.id);
+  if (!updates.length) return "";
+  return `<div class="progress-history">${updates.map((update) => `<div class="progress-update ${update.verification_status}">
+    <h4>${escapeHtml(actionUserName(update.submitted_by))} claimed ${update.claimed_progress_percent}% · ${escapeHtml(update.verification_status)}</h4>
+    <p><strong>Work done:</strong> ${escapeHtml(update.work_done)}</p>
+    ${update.remaining_work ? `<p><strong>Remaining:</strong> ${escapeHtml(update.remaining_work)}</p>` : ""}
+    ${update.delay_reason ? `<p><strong>Delay/reason:</strong> ${escapeHtml(update.delay_reason)}</p>` : ""}
+    ${update.verification_remarks ? `<p><strong>Verification:</strong> ${escapeHtml(update.verification_remarks)}</p>` : ""}
+    ${update.verification_status === "pending" && canVerifyAction(item) ? `<div class="progress-update-actions"><button class="btn secondary verify-progress-button" data-update-id="${update.id}" data-action-id="${item.id}">Review update</button></div>` : ""}
+  </div>`).join("")}</div>`;
+}
+
 function actionList(items, showProject = true) {
   if (!items.length) return `<div class="empty-state">${icon("clipboard",42)}<h3>No actions recorded</h3><p>Create the first action item and assign responsibility.</p></div>`;
   return `<div class="action-list">${items.map((item) => {
     const project = state.projects.find((p) => p.id === item.project_id);
     const correspondence = state.correspondence.find((c) => c.id === item.correspondence_id);
-    const canEdit = ["admin","editor"].includes(state.profile?.role) || item.assigned_to === state.profile?.id;
+    const assignees = actionAssigneesFor(item.id);
+    const assigneeText = assignees.length ? assignees.map((a) => `${a.responsibility_type === "lead" ? "Lead" : "Supporting"}: ${actionUserName(a.user_id)}`).join(" · ") : "Unassigned";
     return `<article class="action-item ${actionTimingClass(item)}">
       <div>
         <div class="action-topline">
@@ -1655,157 +1793,184 @@ function actionList(items, showProject = true) {
           ${correspondence ? `<span class="status-pill pending">Letter: ${escapeHtml(correspondence.letter_number || correspondence.subject || "Linked")}</span>` : ""}
         </div>
         <h3>${escapeHtml(item.title)}</h3>
-        <div class="action-meta">
-          <span>Assigned to: ${escapeHtml(actionUserName(item.assigned_to))}</span>
-          ${item.due_date ? `<span>Due: ${formatDate(item.due_date)}</span>` : `<span>No due date</span>`}
-          ${item.reminder_date ? `<span>Reminder: ${formatDate(item.reminder_date)}</span>` : ""}
-        </div>
+        <div class="action-meta"><span>${escapeHtml(assigneeText)}</span>${item.verifier_id ? `<span>Verifier: ${escapeHtml(actionUserName(item.verifier_id))}</span>` : ""}${item.due_date ? `<span>Due: ${formatDate(item.due_date)}</span>` : `<span>No due date</span>`}</div>
         ${item.description ? `<p class="action-description">${escapeHtml(item.description)}</p>` : ""}
-        ${item.completion_note ? `<p class="action-description"><strong>Completion note:</strong> ${escapeHtml(item.completion_note)}</p>` : ""}
-        <div class="progress-track" aria-label="${Number(item.progress_percent || 0)} percent complete"><span style="width:${Number(item.progress_percent || 0)}%"></span></div>
+        <div class="progress-track" aria-label="${Number(item.verified_progress_percent || 0)} percent verified"><span style="width:${Number(item.verified_progress_percent || 0)}%"></span></div>
+        ${progressHistory(item)}
       </div>
       <div class="action-side">
-        <strong>${Number(item.progress_percent || 0)}% complete</strong>
-        <span>Updated ${formatDate(item.updated_at || item.created_at)}</span>
-        ${canEdit ? `<button class="btn secondary edit-action-button" data-action-id="${item.id}">Update action</button>` : ""}
+        <strong>${Number(item.verified_progress_percent || 0)}% verified</strong>
+        <span>Claimed updates require senior verification</span>
+        ${canControlAction(item) ? `<button class="btn secondary edit-action-button" data-action-id="${item.id}">Edit instruction</button>` : ""}
+        ${canSubmitProgress(item) ? `<button class="btn primary submit-progress-button" data-action-id="${item.id}">Submit progress</button>` : ""}
       </div>
     </article>`;
   }).join("")}</div>`;
 }
 
 function actionDialog(projectId = "") {
-  return `<dialog id="action-dialog" class="modal compact-modal"><form id="action-form" class="modal-card" novalidate>
-    <div class="modal-heading"><div><p class="eyebrow">Action Tracking</p><h2 id="action-dialog-title">Add action</h2><p>Assign responsibility, due date and progress.</p></div><button class="icon-button" type="button" data-dialog-close>${icon("close")}</button></div>
+  return `<dialog id="action-dialog" class="modal"><form id="action-form" class="modal-card" novalidate>
+    <div class="modal-heading"><div><p class="eyebrow">Action Instruction</p><h2 id="action-dialog-title">Issue action</h2><p>Only the issuer or administrator can change instruction, priority, dates and assignment.</p></div><button class="icon-button" type="button" data-dialog-close>${icon("close")}</button></div>
     <input id="action-id" type="hidden" />
-    <div class="form-grid single">
+    <div class="form-grid">
       <label>Project *<select id="action-project" required>${state.projects.map((p)=>`<option value="${p.id}" ${projectId===p.id?"selected":""}>${escapeHtml(p.project_name)}</option>`).join("")}</select></label>
       <label>Linked correspondence<select id="action-correspondence"><option value="">None</option>${state.correspondence.map((c)=>`<option value="${c.id}">${escapeHtml(c.letter_number || "No number")} — ${escapeHtml(c.subject || "Letter")}</option>`).join("")}</select></label>
-      <label>Action title *<input id="action-title" required placeholder="Short action description" /></label>
-      <label>Detailed instruction<textarea id="action-description" rows="3" placeholder="Work to be completed"></textarea></label>
-      <label>Assign to<select id="action-assigned-to"><option value="">Unassigned</option>${state.assignableUsers.map((u)=>`<option value="${u.id}">${escapeHtml(u.full_name)} — ${escapeHtml(u.designation || "User")}</option>`).join("")}</select></label>
+      <label class="wide">Action title *<input id="action-title" required placeholder="Short action instruction" /></label>
+      <label class="wide">Detailed instruction<textarea id="action-description" rows="3" placeholder="Exact work to be completed"></textarea></label>
       <label>Priority<select id="action-priority"><option value="normal">Normal</option><option value="low">Low</option><option value="high">High</option><option value="urgent">Urgent</option></select></label>
       <label>Status<select id="action-status"><option value="open">Open</option><option value="in_progress">In Progress</option><option value="awaiting_response">Awaiting Response</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label>
       <label>Due date<input id="action-due-date" type="date" /></label>
       <label>Reminder date<input id="action-reminder-date" type="date" /></label>
-      <label>Progress (%)<input id="action-progress" type="number" min="0" max="100" step="5" value="0" /></label>
-      <label>Completion note<textarea id="action-completion-note" rows="2" placeholder="Required when marking completed"></textarea></label>
+      <label>Responsibility mode<select id="action-mode"><option value="joint">Joint responsibility</option><option value="separate">Separate responsibilities</option></select></label>
+      <label>Verifying officer<select id="action-verifier"><option value="">Issuer will verify</option>${state.assignableUsers.map((u)=>`<option value="${u.id}">${escapeHtml(u.full_name)} — ${escapeHtml(u.designation || "User")}</option>`).join("")}</select></label>
+      <label class="wide">Assign officers within project jurisdiction<div id="action-assignee-picker" class="assignee-picker"></div><span class="field-help">Only users having active jurisdiction for the selected project are shown. Select one lead officer and any supporting officers.</span></label>
+      <label class="wide">Issuer note<textarea id="action-issuer-note" rows="2" placeholder="Optional administrative note"></textarea></label>
     </div>
     <p id="action-error" class="form-error"></p>
-    <div class="modal-actions"><button class="btn secondary" type="button" data-dialog-close>Cancel</button><button class="btn primary" id="action-save-button" type="submit">Save action</button></div>
+    <div class="modal-actions"><button class="btn secondary" type="button" data-dialog-close>Cancel</button><button class="btn primary" id="action-save-button" type="submit">Save instruction</button></div>
+  </form></dialog>`;
+}
+
+function progressDialog() {
+  return `<dialog id="progress-dialog" class="modal compact-modal"><form id="progress-form" class="modal-card" novalidate>
+    <div class="modal-heading"><div><p class="eyebrow">Progress Submission</p><h2>Submit progress for verification</h2><p>The verified progress will not change until the senior officer approves this update.</p></div><button class="icon-button" type="button" data-dialog-close>${icon("close")}</button></div>
+    <input id="progress-action-id" type="hidden" />
+    <div class="form-grid single">
+      <label>Progress claimed (%) *<input id="progress-claimed" type="number" min="0" max="100" step="5" required /></label>
+      <label>Work completed to reach this progress *<textarea id="progress-work-done" rows="4" required placeholder="Explain what work has actually been completed"></textarea></label>
+      <label>Remaining work<textarea id="progress-remaining" rows="3"></textarea></label>
+      <label>Reason for delay/difficulty<textarea id="progress-delay" rows="3"></textarea></label>
+    </div><p id="progress-error" class="form-error"></p>
+    <div class="modal-actions"><button class="btn secondary" type="button" data-dialog-close>Cancel</button><button class="btn primary" id="progress-submit-button" type="submit">Submit for verification</button></div>
+  </form></dialog>`;
+}
+
+function verificationDialog() {
+  return `<dialog id="verification-dialog" class="modal compact-modal"><form id="verification-form" class="modal-card" novalidate>
+    <div class="modal-heading"><div><p class="eyebrow">Senior Verification</p><h2>Review progress update</h2><p>Approve, revise, return or reject the claimed progress.</p></div><button class="icon-button" type="button" data-dialog-close>${icon("close")}</button></div>
+    <input id="verification-update-id" type="hidden" /><input id="verification-action-id" type="hidden" />
+    <div class="form-grid single">
+      <label>Decision<select id="verification-status"><option value="approved">Approve</option><option value="returned">Return for clarification</option><option value="rejected">Reject</option></select></label>
+      <label>Verified progress (%)<input id="verification-percent" type="number" min="0" max="100" step="5" /></label>
+      <label>Verification remarks *<textarea id="verification-remarks" rows="4" required></textarea></label>
+    </div><p id="verification-error" class="form-error"></p>
+    <div class="modal-actions"><button class="btn secondary" type="button" data-dialog-close>Cancel</button><button class="btn primary" id="verification-save-button" type="submit">Save verification</button></div>
   </form></dialog>`;
 }
 
 function actionSummary(items) {
   const today = new Date(); today.setHours(0,0,0,0);
-  const open = items.filter((i)=>!["completed","cancelled"].includes(i.status)).length;
-  const overdue = items.filter((i)=>i.due_date && !["completed","cancelled"].includes(i.status) && new Date(`${i.due_date}T00:00:00`) < today).length;
-  const dueSoon = items.filter((i)=>{
-    if (!i.due_date || ["completed","cancelled"].includes(i.status)) return false;
-    const days = Math.round((new Date(`${i.due_date}T00:00:00`) - today)/86400000);
-    return days >= 0 && days <= 3;
-  }).length;
-  const completed = items.filter((i)=>i.status === "completed").length;
-  return { open, overdue, dueSoon, completed };
+  return {
+    open: items.filter((i)=>!["completed","cancelled"].includes(i.status)).length,
+    overdue: items.filter((i)=>i.due_date && !["completed","cancelled"].includes(i.status) && new Date(`${i.due_date}T00:00:00`) < today).length,
+    pending: state.actionProgressUpdates.filter((u)=>u.verification_status === "pending").length,
+    completed: items.filter((i)=>i.status === "completed").length,
+  };
 }
 
 function actionPageTemplate() {
   const summary = actionSummary(state.actionItems);
   const canCreate = ["admin","editor"].includes(state.profile?.role);
-  return `<div class="app-shell">${appHeader()}${sidebar("actions")}
-    <main class="main-content action-page">
-      <div class="breadcrumb"><span>Dashboard</span><b>/</b>Action Tracking</div>
-      <div class="admin-heading"><div><h1>Action Tracking</h1><p>Assign, monitor and close project actions and correspondence follow-ups.</p></div>${canCreate?`<button class="btn primary" id="add-action-button">${icon("plus")}Add action</button>`:""}</div>
-      <section class="action-summary-grid">
-        <div class="admin-metric"><span>Open actions</span><strong>${summary.open}</strong></div>
-        <div class="admin-metric"><span>Overdue</span><strong>${summary.overdue}</strong></div>
-        <div class="admin-metric"><span>Due within 3 days</span><strong>${summary.dueSoon}</strong></div>
-        <div class="admin-metric"><span>Completed</span><strong>${summary.completed}</strong></div>
-      </section>
-      <section class="admin-card"><div class="admin-card-heading"><div><h2>Action register</h2><p>${state.actionItems.length} action${state.actionItems.length===1?"":"s"} recorded.</p></div></div><div style="padding:18px 20px;">${actionList(state.actionItems,true)}</div></section>
-      ${actionDialog("")}
-    </main></div>`;
+  return `<div class="app-shell">${appHeader()}${sidebar("actions")}<main class="main-content action-page">
+    <div class="breadcrumb"><span>Dashboard</span><b>/</b>Action Tracking</div>
+    <div class="admin-heading"><div><h1>Action Tracking</h1><p>Instruction, execution, progress submission and senior verification.</p></div>${canCreate?`<button class="btn primary" id="add-action-button">${icon("plus")}Issue action</button>`:""}</div>
+    <section class="action-summary-grid"><div class="admin-metric"><span>Open actions</span><strong>${summary.open}</strong></div><div class="admin-metric"><span>Overdue</span><strong>${summary.overdue}</strong></div><div class="admin-metric"><span>Pending verification</span><strong>${summary.pending}</strong></div><div class="admin-metric"><span>Completed</span><strong>${summary.completed}</strong></div></section>
+    <section class="admin-card"><div class="admin-card-heading"><div><h2>Action register</h2><p>${state.actionItems.length} action${state.actionItems.length===1?"":"s"} recorded.</p></div></div><div style="padding:18px 20px;">${actionList(state.actionItems,true)}</div></section>
+    ${actionDialog("")}${progressDialog()}${verificationDialog()}
+  </main></div>`;
 }
 
 function projectActionsModule(project) {
   const items = state.actionItems.filter((item)=>item.project_id === project.id);
   const canCreate = ["admin","editor"].includes(state.profile?.role);
-  return `<div><div class="module-header"><div><h2>Action Tracking</h2><p>Assigned tasks and follow-up actions for this project.</p></div>${canCreate?`<button class="btn primary" id="add-project-action">${icon("plus")}Add action</button>`:""}</div>${actionList(items,false)}${actionDialog(project.id)}</div>`;
+  return `<div><div class="module-header"><div><h2>Action Tracking</h2><p>Instructions and verified progress for this project.</p></div>${canCreate?`<button class="btn primary" id="add-project-action">${icon("plus")}Issue action</button>`:""}</div>${actionList(items,false)}${actionDialog(project.id)}${progressDialog()}${verificationDialog()}</div>`;
+}
+
+async function loadActionData(projectId = null) {
+  [state.actionItems, state.assignableUsers, state.correspondence, state.projectJurisdictions, state.actionAssignees, state.actionProgressUpdates] = await Promise.all([
+    getActionItems(projectId), getAssignableUsers(), getCorrespondence(projectId), getProjectJurisdictions(), getActionAssignees(), getActionProgressUpdates()
+  ]);
 }
 
 async function renderActionPage() {
   root.innerHTML = `<div class="loading-screen"><span class="spinner dark"></span><p>Loading actions...</p></div>`;
-  try {
-    [state.actionItems, state.assignableUsers, state.correspondence] = await Promise.all([getActionItems(), getAssignableUsers(), getCorrespondence()]);
-    root.innerHTML = actionPageTemplate();
-    bindActionEvents(renderActionPage);
-  } catch (error) {
-    root.innerHTML = `<div class="loading-screen"><p>${escapeHtml(error.message)}</p></div>`;
-  }
+  try { await loadActionData(); root.innerHTML = actionPageTemplate(); bindActionEvents(renderActionPage); }
+  catch (error) { root.innerHTML = `<div class="loading-screen"><p>${escapeHtml(error.message)}</p></div>`; }
+}
+
+function renderAssigneePicker(projectId, selected = []) {
+  const picker = document.querySelector("#action-assignee-picker");
+  if (!picker) return;
+  const users = jurisdictionUsersForProject(projectId);
+  picker.innerHTML = users.length ? users.map((user, index)=>{
+    const existing = selected.find((item)=>item.user_id === user.id);
+    return `<label class="assignee-option"><input type="checkbox" class="assignee-checkbox" value="${user.id}" ${existing?"checked":""}/><span><strong>${escapeHtml(user.full_name)} — ${escapeHtml(user.designation || "User")}</strong><span>${escapeHtml(user.office_name || "Office not specified")}</span><select class="assignee-role" data-user-id="${user.id}" ${existing?"":"disabled"}><option value="lead" ${existing?.responsibility_type === "lead"?"selected":""}>Lead</option><option value="supporting" ${existing?.responsibility_type !== "lead"?"selected":""}>Supporting</option></select><input class="assignee-note" data-user-id="${user.id}" placeholder="Individual responsibility" value="${escapeHtml(existing?.responsibility_note || "")}" ${existing?"":"disabled"}/></span></label>`;
+  }).join("") : `<p class="form-error">No approved officer currently has jurisdiction for this project. Add project jurisdiction in Administration first.</p>`;
+  picker.querySelectorAll(".assignee-checkbox").forEach((box)=>box.addEventListener("change",()=>{
+    picker.querySelector(`.assignee-role[data-user-id="${box.value}"]`).disabled = !box.checked;
+    picker.querySelector(`.assignee-note[data-user-id="${box.value}"]`).disabled = !box.checked;
+  }));
 }
 
 function populateActionForm(item = null) {
   document.querySelector("#action-form")?.reset();
   document.querySelector("#action-id").value = item?.id || "";
-  document.querySelector("#action-dialog-title").textContent = item ? "Update action" : "Add action";
-  if (!item) return;
-  document.querySelector("#action-project").value = item.project_id || "";
-  document.querySelector("#action-correspondence").value = item.correspondence_id || "";
-  document.querySelector("#action-title").value = item.title || "";
-  document.querySelector("#action-description").value = item.description || "";
-  document.querySelector("#action-assigned-to").value = item.assigned_to || "";
-  document.querySelector("#action-priority").value = item.priority || "normal";
-  document.querySelector("#action-status").value = item.status || "open";
-  document.querySelector("#action-due-date").value = item.due_date || "";
-  document.querySelector("#action-reminder-date").value = item.reminder_date || "";
-  document.querySelector("#action-progress").value = Number(item.progress_percent || 0);
-  document.querySelector("#action-completion-note").value = item.completion_note || "";
+  document.querySelector("#action-dialog-title").textContent = item ? "Edit action instruction" : "Issue action";
+  const projectId = item?.project_id || document.querySelector("#action-project")?.value || state.projects[0]?.id || "";
+  if (item) {
+    document.querySelector("#action-project").value = item.project_id || "";
+    document.querySelector("#action-correspondence").value = item.correspondence_id || "";
+    document.querySelector("#action-title").value = item.title || "";
+    document.querySelector("#action-description").value = item.description || "";
+    document.querySelector("#action-priority").value = item.priority || "normal";
+    document.querySelector("#action-status").value = item.status || "open";
+    document.querySelector("#action-due-date").value = item.due_date || "";
+    document.querySelector("#action-reminder-date").value = item.reminder_date || "";
+    document.querySelector("#action-mode").value = item.responsibility_mode || "joint";
+    document.querySelector("#action-verifier").value = item.verifier_id || "";
+    document.querySelector("#action-issuer-note").value = item.issuer_note || "";
+  }
+  renderAssigneePicker(projectId, item ? actionAssigneesFor(item.id) : []);
 }
 
 function bindActionEvents(onSaved) {
   bindCommonEvents();
-  const dialog = document.querySelector("#action-dialog");
-  const openNew = () => { populateActionForm(null); dialog.showModal(); };
+  const actionDialogElement = document.querySelector("#action-dialog");
+  const progressDialogElement = document.querySelector("#progress-dialog");
+  const verificationDialogElement = document.querySelector("#verification-dialog");
+  const openNew = () => { populateActionForm(null); actionDialogElement.showModal(); };
   document.querySelector("#add-action-button")?.addEventListener("click", openNew);
   document.querySelector("#add-project-action")?.addEventListener("click", openNew);
-  document.querySelectorAll(".edit-action-button").forEach((button)=>button.addEventListener("click",()=>{
-    const item = state.actionItems.find((action)=>action.id === button.dataset.actionId);
-    if (!item) return;
-    populateActionForm(item); dialog.showModal();
-  }));
+  document.querySelector("#action-project")?.addEventListener("change", (event)=>renderAssigneePicker(event.target.value, []));
+  document.querySelectorAll(".edit-action-button").forEach((button)=>button.addEventListener("click",()=>{ const item=state.actionItems.find((a)=>a.id===button.dataset.actionId); if(item){populateActionForm(item); actionDialogElement.showModal();} }));
+  document.querySelectorAll(".submit-progress-button").forEach((button)=>button.addEventListener("click",()=>{ document.querySelector("#progress-form").reset(); document.querySelector("#progress-action-id").value=button.dataset.actionId; progressDialogElement.showModal(); }));
+  document.querySelectorAll(".verify-progress-button").forEach((button)=>button.addEventListener("click",()=>{ const update=state.actionProgressUpdates.find((u)=>u.id===button.dataset.updateId); document.querySelector("#verification-form").reset(); document.querySelector("#verification-update-id").value=button.dataset.updateId; document.querySelector("#verification-action-id").value=button.dataset.actionId; document.querySelector("#verification-percent").value=update?.claimed_progress_percent ?? 0; verificationDialogElement.showModal(); }));
+
   document.querySelector("#action-form")?.addEventListener("submit", async (event)=>{
-    event.preventDefault();
-    const form = event.currentTarget;
-    if (!form.checkValidity()) { form.reportValidity(); return; }
-    const id = document.querySelector("#action-id").value;
-    const status = document.querySelector("#action-status").value;
-    const progress = Number(document.querySelector("#action-progress").value || 0);
-    const completionNote = document.querySelector("#action-completion-note").value.trim() || null;
-    if (status === "completed" && !completionNote) {
-      document.querySelector("#action-error").textContent = "Add a completion note before marking the action completed.";
-      return;
-    }
-    const payload = {
-      project_id: document.querySelector("#action-project").value,
-      correspondence_id: document.querySelector("#action-correspondence").value || null,
-      title: document.querySelector("#action-title").value.trim(),
-      description: document.querySelector("#action-description").value.trim() || null,
-      assigned_to: document.querySelector("#action-assigned-to").value || null,
-      priority: document.querySelector("#action-priority").value,
-      status,
-      due_date: document.querySelector("#action-due-date").value || null,
-      reminder_date: document.querySelector("#action-reminder-date").value || null,
-      progress_percent: status === "completed" ? 100 : progress,
-      completion_note: completionNote,
-      completed_at: status === "completed" ? new Date().toISOString() : null,
-    };
-    const button = document.querySelector("#action-save-button");
-    const error = document.querySelector("#action-error");
-    setButtonLoading(button,true,"Saving..."); error.textContent="";
-    try {
-      if (id) await updateActionItem(id,payload); else await createActionItem(payload);
-      dialog.close(); showToast(id ? "Action updated." : "Action created."); await onSaved();
-    } catch (err) { error.textContent = err.message; }
-    finally { setButtonLoading(button,false); }
+    event.preventDefault(); const form=event.currentTarget; if(!form.checkValidity()){form.reportValidity();return;}
+    const id=document.querySelector("#action-id").value;
+    const selected=[...document.querySelectorAll(".assignee-checkbox:checked")].map((box)=>({user_id:box.value,responsibility_type:document.querySelector(`.assignee-role[data-user-id="${box.value}"]`).value,responsibility_note:document.querySelector(`.assignee-note[data-user-id="${box.value}"]`).value.trim()||null}));
+    if(!selected.length){document.querySelector("#action-error").textContent="Select at least one officer having project jurisdiction.";return;}
+    if(selected.filter((item)=>item.responsibility_type==="lead").length!==1){document.querySelector("#action-error").textContent="Select exactly one lead officer.";return;}
+    const payload={project_id:document.querySelector("#action-project").value,correspondence_id:document.querySelector("#action-correspondence").value||null,title:document.querySelector("#action-title").value.trim(),description:document.querySelector("#action-description").value.trim()||null,priority:document.querySelector("#action-priority").value,status:document.querySelector("#action-status").value,due_date:document.querySelector("#action-due-date").value||null,reminder_date:document.querySelector("#action-reminder-date").value||null,responsibility_mode:document.querySelector("#action-mode").value,verifier_id:document.querySelector("#action-verifier").value||null,issuer_note:document.querySelector("#action-issuer-note").value.trim()||null};
+    const button=document.querySelector("#action-save-button"); const error=document.querySelector("#action-error"); setButtonLoading(button,true,"Saving..."); error.textContent="";
+    try { const action=id ? await updateActionItem(id,payload) : await createActionItem(payload); await deactivateActionAssignees(action.id); for(const assignment of selected) await createActionAssignee({action_id:action.id,...assignment,is_active:true}); actionDialogElement.close(); showToast(id?"Action instruction updated.":"Action issued."); await onSaved(); }
+    catch(err){error.textContent=err.message;} finally{setButtonLoading(button,false);}
+  });
+
+  document.querySelector("#progress-form")?.addEventListener("submit", async (event)=>{
+    event.preventDefault(); const form=event.currentTarget; if(!form.checkValidity()){form.reportValidity();return;}
+    const button=document.querySelector("#progress-submit-button"); const error=document.querySelector("#progress-error"); setButtonLoading(button,true,"Submitting..."); error.textContent="";
+    try { await createProgressUpdate({action_id:document.querySelector("#progress-action-id").value,claimed_progress_percent:Number(document.querySelector("#progress-claimed").value),work_done:document.querySelector("#progress-work-done").value.trim(),remaining_work:document.querySelector("#progress-remaining").value.trim()||null,delay_reason:document.querySelector("#progress-delay").value.trim()||null}); progressDialogElement.close(); showToast("Progress submitted for senior verification."); await onSaved(); }
+    catch(err){error.textContent=err.message;} finally{setButtonLoading(button,false);}
+  });
+
+  document.querySelector("#verification-form")?.addEventListener("submit", async (event)=>{
+    event.preventDefault(); const form=event.currentTarget; if(!form.checkValidity()){form.reportValidity();return;}
+    const status=document.querySelector("#verification-status").value; const verifiedPercent=Number(document.querySelector("#verification-percent").value||0); const actionId=document.querySelector("#verification-action-id").value;
+    const button=document.querySelector("#verification-save-button"); const error=document.querySelector("#verification-error"); setButtonLoading(button,true,"Saving..."); error.textContent="";
+    try { await verifyProgressUpdate(document.querySelector("#verification-update-id").value,{verification_status:status,verified_progress_percent:status==="approved"?verifiedPercent:null,verification_remarks:document.querySelector("#verification-remarks").value.trim()}); if(status==="approved") await updateActionItem(actionId,{verified_progress_percent:verifiedPercent,progress_percent:verifiedPercent,status:verifiedPercent>=100?"completed":"in_progress",completed_at:verifiedPercent>=100?new Date().toISOString():null}); verificationDialogElement.close(); showToast("Progress verification saved."); await onSaved(); }
+    catch(err){error.textContent=err.message;} finally{setButtonLoading(button,false);}
   });
 }
 
@@ -1847,7 +2012,7 @@ async function renderWorkspace(projectId) {
   if (state.demo) project = state.projects.find((item) => item.id === projectId);
   else {
     try {
-      [project, state.correspondence, state.actionItems, state.assignableUsers] = await Promise.all([getProject(projectId), getCorrespondence(projectId), getActionItems(projectId), getAssignableUsers()]);
+      [project, state.correspondence, state.actionItems, state.assignableUsers, state.projectJurisdictions, state.actionAssignees, state.actionProgressUpdates] = await Promise.all([getProject(projectId), getCorrespondence(projectId), getActionItems(projectId), getAssignableUsers(), getProjectJurisdictions(), getActionAssignees(), getActionProgressUpdates()]);
     } catch (error) { showToast(error.message, "error"); }
   }
   root.innerHTML = workspaceTemplate(project);
