@@ -233,7 +233,7 @@ function setSession(session) {
   else localStorage.setItem(SESSION_KEY, JSON.stringify(session));
 }
 
-export async function signIn(email, password) {
+async function signIn(email, password) {
   const response = await fetch(`${CONFIG.supabaseUrl}/auth/v1/token?grant_type=password`, {
     method: "POST",
     headers: {
@@ -247,7 +247,7 @@ export async function signIn(email, password) {
   return session;
 }
 
-export async function signUp({ email, password, fullName, designation }) {
+async function signUp({ email, password, fullName, designation }) {
   const response = await fetch(`${CONFIG.supabaseUrl}/auth/v1/signup`, {
     method: "POST",
     headers: {
@@ -265,7 +265,7 @@ export async function signUp({ email, password, fullName, designation }) {
   return payload;
 }
 
-export async function refreshSession(session) {
+async function refreshSession(session) {
   if (!session?.refresh_token) return null;
   const response = await fetch(`${CONFIG.supabaseUrl}/auth/v1/token?grant_type=refresh_token`, {
     method: "POST",
@@ -280,7 +280,7 @@ export async function refreshSession(session) {
   return refreshed;
 }
 
-export async function ensureSession() {
+async function ensureSession() {
   let session = getSession();
   if (!session) return null;
   const expiresAtMs = (session.expires_at || 0) * 1000;
@@ -295,7 +295,7 @@ export async function ensureSession() {
   return session;
 }
 
-export async function signOut() {
+async function signOut() {
   const session = getSession();
   if (session?.access_token) {
     await fetch(`${CONFIG.supabaseUrl}/auth/v1/logout`, {
@@ -319,7 +319,7 @@ async function rest(path, options = {}) {
   return parseResponse(response);
 }
 
-export async function getProfile() {
+async function getProfile() {
   const session = await ensureSession();
   const userId = session?.user?.id;
   if (!userId) return null;
@@ -331,7 +331,7 @@ function getProjects() {
   return rest("v_project_register?select=*&order=updated_at.desc");
 }
 
-export async function getProject(id) {
+async function getProject(id) {
   const rows = await rest(`v_project_register?id=eq.${encodeURIComponent(id)}&select=*`);
   return rows[0] || null;
 }
@@ -344,7 +344,7 @@ function getOffices() {
   return rest("offices?select=id,name,office_type&order=name.asc");
 }
 
-export async function createProject(payload) {
+async function createProject(payload) {
   const session = await ensureSession();
   const data = {
     ...payload,
