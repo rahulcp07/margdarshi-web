@@ -251,6 +251,16 @@ h1, h2, h3, p { overflow-wrap: anywhere; }
 .assignee-option strong, .assignee-option span { display: block; }
 .assignee-option span { margin-top: 3px; color: var(--muted); font-size: 10px; }
 .progress-history { display: grid; gap: 10px; margin-top: 13px; }
+.workflow-stage { display: inline-flex; width: fit-content; padding: 4px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; color: #334155; background: #e2e8f0; text-transform: capitalize; }
+.workflow-direction { display: inline-flex; width: fit-content; padding: 4px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; }
+.workflow-direction.internal { color:#475569;background:#f1f5f9; }
+.workflow-direction.downward { color:#166534;background:#dcfce7; }
+.workflow-direction.upward { color:#7c2d12;background:#ffedd5; }
+.workflow-history { display:grid; gap:8px; margin-top:12px; }
+.workflow-event { padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:#f8fafc; font-size:11px; color:#475569; }
+.workflow-event strong { color:var(--text); }
+.workflow-event small { display:block; margin-top:4px; color:var(--muted); }
+
 .progress-update { padding: 12px 13px; border: 1px solid var(--border); border-radius: 9px; background: #fbfcfd; }
 .progress-update.pending { border-left: 4px solid #f59e0b; }
 .progress-update.approved { border-left: 4px solid #16a34a; }
@@ -635,7 +645,7 @@ async function saveNotificationState(notificationKey, payload) {
 
 function getActionItems(projectId = null) {
   const projectFilter = projectId ? `&project_id=eq.${encodeURIComponent(projectId)}` : "";
-  return rest(`action_items?select=id,project_id,correspondence_id,title,description,assigned_to,assigned_by,priority,status,due_date,reminder_date,progress_percent,verified_progress_percent,completion_note,completed_at,created_by,created_at,updated_at,verifier_id,responsibility_mode,issuer_note&order=due_date.asc.nullslast,created_at.desc${projectFilter}`);
+  return rest(`action_items?select=id,project_id,correspondence_id,title,description,assigned_to,assigned_by,priority,status,due_date,reminder_date,progress_percent,verified_progress_percent,completion_note,completed_at,created_by,created_at,updated_at,verifier_id,responsibility_mode,issuer_note,action_type,workflow_stage,movement_direction,competent_authority_id,approved_for_forwarding,forwarding_authorized_to,office_processing_note,closure_mode,closed_by,closed_at&order=due_date.asc.nullslast,created_at.desc${projectFilter}`);
 }
 
 function getAssignableUsers() {
@@ -652,6 +662,20 @@ function getActionAssignees() {
 
 function getActionProgressUpdates() {
   return rest("action_progress_updates?select=id,action_id,submitted_by,claimed_progress_percent,work_done,remaining_work,delay_reason,submitted_at,verification_status,verified_progress_percent,verification_remarks,verified_by,verified_at&order=submitted_at.desc");
+}
+
+function getActionWorkflowEvents() {
+  return rest("action_workflow_events?select=id,action_id,event_type,from_stage,to_stage,performed_by,on_behalf_of,remarks,draft_text,created_at&order=created_at.desc");
+}
+
+async function createActionWorkflowEvent(payload) {
+  const session = await ensureSession();
+  const rows = await rest("action_workflow_events", {
+    method: "POST",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify({ ...payload, performed_by: session?.user?.id || null }),
+  });
+  return rows[0] || null;
 }
 
 async function createActionItem(payload) {
@@ -943,6 +967,7 @@ const state = {
   projectJurisdictions: [],
   actionAssignees: [],
   actionProgressUpdates: [],
+  actionWorkflowEvents: [],
   notificationStates: [],
   notifications: [],
   calendarEvents: [],
@@ -1248,7 +1273,7 @@ function addProjectDialog() {
 const DESIGNATION_GROUPS = [
   ["Class I", ["Chief Engineer","Superintending Engineer","Executive Engineer","Assistant Executive Engineer","Deputy Engineer (PA), Class I","Sub-Divisional Engineer","Sub-Divisional Officer","Assistant Engineer Grade-I"]],
   ["Class II", ["Project Officer, Class II","Assistant Engineer Grade-II","Sectional Engineer","Junior Engineer"]],
-  ["Ministerial and Supporting Staff", ["Divisional Accountant","Senior Clerk","Junior Clerk","Data Entry Operator"]],
+  ["Ministerial and Supporting Staff", ["Personal Assistant","Auditor","Divisional Accountant","Senior Clerk","Junior Clerk","Data Entry Operator"]],
   ["External Users", ["Consultant / Authority Engineer","Contractor Representative","Other"]],
 ];
 
@@ -2277,6 +2302,43 @@ function canSubmitProgress(item) {
   return actionAssigneesFor(item.id).some((assignment) => assignment.user_id === state.profile?.id);
 }
 
+
+const OFFICE_ACTION_TYPES = [
+  ["execute_work","Execute work"],
+  ["examine_report","Examine and report"],
+  ["prepare_draft","Prepare draft reply"],
+  ["financial_scrutiny","Financial scrutiny"],
+  ["audit_scrutiny","Audit scrutiny"],
+  ["submit_comments","Submit comments"],
+  ["forward_subordinate","Forward to subordinate office"],
+  ["submit_higher","Submit to higher office"],
+  ["seek_clarification","Seek clarification"],
+  ["compliance_report","Compliance report"],
+  ["record_close","Record and close"],
+];
+
+const WORKFLOW_STAGES = [
+  ["received","Received"],["under_examination","Under examination"],["draft_prepared","Draft prepared"],
+  ["pending_approval","Pending approval"],["approved","Approved"],["forwarded","Forwarded"],
+  ["awaiting_response","Awaiting subordinate response"],["response_received","Response received"],
+  ["verified","Verified"],["closed","Closed"]
+];
+
+function officeActionTypeLabel(value){ return OFFICE_ACTION_TYPES.find(([key])=>key===value)?.[1] || value || "Execute work"; }
+function workflowStageLabel(value){ return WORKFLOW_STAGES.find(([key])=>key===value)?.[1] || value || "Received"; }
+function workflowEventsFor(actionId){ return state.actionWorkflowEvents.filter((event)=>event.action_id===actionId); }
+function isPAUser(){ const d=(state.profile?.designation||"").toLowerCase(); return d.includes("personal assistant") || d.includes("(pa)"); }
+function isInternalProcessor(){ const d=(state.profile?.designation||"").toLowerCase(); return d.includes("project officer") || d.includes("auditor") || d.includes("accountant") || isPAUser(); }
+function canProcessOfficeAction(item){ return canControlAction(item) || canSubmitProgress(item) || isInternalProcessor(); }
+function canForwardDownward(item){ return canControlAction(item) || (isPAUser() && item.approved_for_forwarding && item.movement_direction === "downward"); }
+function canSubmitUpward(item){ return canControlAction(item) || state.profile?.id === item.competent_authority_id; }
+
+function workflowHistory(item){
+  const events=workflowEventsFor(item.id);
+  if(!events.length) return "";
+  return `<div class="workflow-history">${events.map((event)=>`<div class="workflow-event"><strong>${escapeHtml(actionUserName(event.performed_by))}</strong> · ${escapeHtml(event.event_type.replaceAll("_"," "))}${event.to_stage?` → ${escapeHtml(workflowStageLabel(event.to_stage))}`:""}${event.on_behalf_of?` · On behalf of ${escapeHtml(actionUserName(event.on_behalf_of))}`:""}${event.remarks?`<div>${escapeHtml(event.remarks)}</div>`:""}${event.draft_text?`<div><strong>Draft/Report:</strong> ${escapeHtml(event.draft_text)}</div>`:""}<small>${formatDate(event.created_at)}</small></div>`).join("")}</div>`;
+}
+
 function canVerifyAction(item) {
   return state.profile?.role === "admin" || item.verifier_id === state.profile?.id || item.assigned_by === state.profile?.id || item.created_by === state.profile?.id;
 }
@@ -2306,14 +2368,18 @@ function actionList(items, showProject = true) {
         <div class="action-topline">
           <span class="priority-pill ${item.priority || "normal"}">${item.priority || "normal"}</span>
           <span class="action-status ${item.status || "open"}">${actionStatusLabel(item.status)}</span>
+          <span class="workflow-stage">${escapeHtml(workflowStageLabel(item.workflow_stage))}</span>
+          <span class="workflow-direction ${item.movement_direction || "internal"}">${escapeHtml(item.movement_direction || "internal")}</span>
           ${showProject && project ? `<span class="status-pill approved">${escapeHtml(project.project_code || project.project_name)}</span>` : ""}
           ${correspondence ? `<span class="status-pill pending">Letter: ${escapeHtml(correspondence.letter_number || correspondence.subject || "Linked")}</span>` : ""}
         </div>
         <h3>${escapeHtml(item.title)}</h3>
         <div class="action-meta"><span>${escapeHtml(assigneeText)}</span>${item.verifier_id ? `<span>Verifier: ${escapeHtml(actionUserName(item.verifier_id))}</span>` : ""}${item.due_date ? `<span>Due: ${formatDate(item.due_date)}</span>` : `<span>No due date</span>`}</div>
         ${item.description ? `<p class="action-description">${escapeHtml(item.description)}</p>` : ""}
+        <p class="action-description"><strong>Processing type:</strong> ${escapeHtml(officeActionTypeLabel(item.action_type))}${item.competent_authority_id ? ` · <strong>Competent authority:</strong> ${escapeHtml(actionUserName(item.competent_authority_id))}` : ""}</p>
         <div class="progress-track" aria-label="${Number(item.verified_progress_percent || 0)} percent verified"><span style="width:${Number(item.verified_progress_percent || 0)}%"></span></div>
         ${progressHistory(item)}
+        ${workflowHistory(item)}
       </div>
       <div class="action-side">
         ${(() => {
@@ -2325,6 +2391,7 @@ function actionList(items, showProject = true) {
         <span>Only verified progress is treated as official.</span>
         ${canControlAction(item) ? `<button class="btn secondary edit-action-button" data-action-id="${item.id}">Edit instruction</button>` : ""}
         ${canSubmitProgress(item) ? `<button class="btn primary submit-progress-button" data-action-id="${item.id}">Submit progress</button>` : ""}
+        ${canProcessOfficeAction(item) ? `<button class="btn secondary process-office-action-button" data-action-id="${item.id}">Process / Forward</button>` : ""}
       </div>
     </article>`;
   }).join("")}</div>`;
@@ -2344,12 +2411,32 @@ function actionDialog(projectId = "") {
       <label>Due date<input id="action-due-date" type="date" /></label>
       <label>Reminder date<input id="action-reminder-date" type="date" /></label>
       <label>Responsibility mode<select id="action-mode"><option value="joint">Joint responsibility</option><option value="separate">Separate responsibilities</option></select></label>
+      <label>Action / processing type<select id="action-type">${OFFICE_ACTION_TYPES.map(([value,label])=>`<option value="${value}">${label}</option>`).join("")}</select></label>
+      <label>Movement direction<select id="action-direction"><option value="internal">Internal processing</option><option value="downward">Downward to subordinate office</option><option value="upward">Upward to higher office</option></select></label>
+      <label>Competent authority<select id="action-authority"><option value="">Issuer / not specified</option>${state.assignableUsers.map((u)=>`<option value="${u.id}">${escapeHtml(u.full_name)} — ${escapeHtml(u.designation || "User")}</option>`).join("")}</select></label>
       <label>Verifying officer<select id="action-verifier"><option value="">Issuer will verify</option>${state.assignableUsers.map((u)=>`<option value="${u.id}">${escapeHtml(u.full_name)} — ${escapeHtml(u.designation || "User")}</option>`).join("")}</select></label>
       <label class="wide">Assign officers within project jurisdiction<div id="action-assignee-picker" class="assignee-picker"></div><span class="field-help">Only users having active jurisdiction for the selected project are shown. Select one lead officer and any supporting officers.</span></label>
       <label class="wide">Issuer note<textarea id="action-issuer-note" rows="2" placeholder="Optional administrative note"></textarea></label>
     </div>
     <p id="action-error" class="form-error"></p>
     <div class="modal-actions"><button class="btn secondary" type="button" data-dialog-close>Cancel</button><button class="btn primary" id="action-save-button" type="submit">Save instruction</button></div>
+  </form></dialog>`;
+}
+
+
+function officeProcessDialog(){
+  return `<dialog id="office-process-dialog" class="modal compact-modal"><form id="office-process-form" class="modal-card" novalidate>
+    <div class="modal-heading"><div><p class="eyebrow">Office Processing</p><h2>Process, approve or forward action</h2><p>PA may execute an approved downward forwarding, but upward submission requires the competent EE/SE/CE.</p></div><button class="icon-button" type="button" data-dialog-close>${icon("close")}</button></div>
+    <input id="office-process-action-id" type="hidden" />
+    <div class="form-grid single">
+      <label>Processing outcome<select id="office-process-event"><option value="examination_started">Start examination</option><option value="report_submitted">Submit report / scrutiny note</option><option value="draft_prepared">Prepare draft for approval</option><option value="approval_requested">Send draft for approval</option><option value="approved">Approve draft / forwarding</option><option value="forwarded_downward">Forward to subordinate office</option><option value="submitted_upward">Submit to higher office</option><option value="response_received">Record subordinate response</option><option value="closed">Close action</option></select></label>
+      <label>Next workflow stage<select id="office-process-stage">${WORKFLOW_STAGES.map(([value,label])=>`<option value="${value}">${label}</option>`).join("")}</select></label>
+      <label>Forward/issue on behalf of<select id="office-process-on-behalf"><option value="">Not applicable</option>${state.assignableUsers.map((u)=>`<option value="${u.id}">${escapeHtml(u.full_name)} — ${escapeHtml(u.designation || "User")}</option>`).join("")}</select></label>
+      <label>Report / draft text<textarea id="office-process-draft" rows="5" placeholder="Report, scrutiny comments, draft forwarding letter or draft reply"></textarea></label>
+      <label>Remarks *<textarea id="office-process-remarks" rows="3" required></textarea></label>
+      <label style="display:flex;grid-template-columns:auto 1fr;gap:9px;align-items:center;"><input id="office-process-authorize-pa" type="checkbox" style="width:auto;"/>Approve downward forwarding and authorize concerned PA</label>
+    </div><p id="office-process-error" class="form-error"></p>
+    <div class="modal-actions"><button class="btn secondary" type="button" data-dialog-close>Cancel</button><button class="btn primary" id="office-process-save" type="submit">Save processing</button></div>
   </form></dialog>`;
 }
 
@@ -2398,19 +2485,19 @@ function actionPageTemplate() {
     <div class="admin-heading"><div><h1>Action Tracking</h1><p>Instruction, execution, progress submission and senior verification.</p></div>${canCreate?`<button class="btn primary" id="add-action-button">${icon("plus")}Issue action</button>`:""}</div>
     <section class="action-summary-grid"><div class="admin-metric"><span>Open actions</span><strong>${summary.open}</strong></div><div class="admin-metric"><span>Overdue</span><strong>${summary.overdue}</strong></div><div class="admin-metric"><span>Pending verification</span><strong>${summary.pending}</strong></div><div class="admin-metric"><span>Completed</span><strong>${summary.completed}</strong></div></section>
     <section class="admin-card"><div class="admin-card-heading"><div><h2>Action register</h2><p>${state.actionItems.length} action${state.actionItems.length===1?"":"s"} recorded.</p></div></div><div style="padding:18px 20px;">${actionList(state.actionItems,true)}</div></section>
-    ${actionDialog("")}${progressDialog()}${verificationDialog()}
+    ${actionDialog("")}${officeProcessDialog()}${progressDialog()}${verificationDialog()}
   </main></div>`;
 }
 
 function projectActionsModule(project) {
   const items = state.actionItems.filter((item)=>item.project_id === project.id);
   const canCreate = ["admin","editor"].includes(state.profile?.role);
-  return `<div><div class="module-header"><div><h2>Action Tracking</h2><p>Instructions and verified progress for this project.</p></div>${canCreate?`<button class="btn primary" id="add-project-action">${icon("plus")}Issue action</button>`:""}</div>${actionList(items,false)}${actionDialog(project.id)}${progressDialog()}${verificationDialog()}</div>`;
+  return `<div><div class="module-header"><div><h2>Action Tracking</h2><p>Instructions and verified progress for this project.</p></div>${canCreate?`<button class="btn primary" id="add-project-action">${icon("plus")}Issue action</button>`:""}</div>${actionList(items,false)}${actionDialog(project.id)}${officeProcessDialog()}${progressDialog()}${verificationDialog()}</div>`;
 }
 
 async function loadActionData(projectId = null) {
-  [state.actionItems, state.assignableUsers, state.correspondence, state.projectJurisdictions, state.actionAssignees, state.actionProgressUpdates] = await Promise.all([
-    getActionItems(projectId), getAssignableUsers(), getCorrespondence(projectId), getProjectJurisdictions(), getActionAssignees(), getActionProgressUpdates()
+  [state.actionItems, state.assignableUsers, state.correspondence, state.projectJurisdictions, state.actionAssignees, state.actionProgressUpdates, state.actionWorkflowEvents] = await Promise.all([
+    getActionItems(projectId), getAssignableUsers(), getCorrespondence(projectId), getProjectJurisdictions(), getActionAssignees(), getActionProgressUpdates(), getActionWorkflowEvents()
   ]);
 }
 
@@ -2449,6 +2536,9 @@ function populateActionForm(item = null) {
     document.querySelector("#action-due-date").value = item.due_date || "";
     document.querySelector("#action-reminder-date").value = item.reminder_date || "";
     document.querySelector("#action-mode").value = item.responsibility_mode || "joint";
+    document.querySelector("#action-type").value = item.action_type || "execute_work";
+    document.querySelector("#action-direction").value = item.movement_direction || "internal";
+    document.querySelector("#action-authority").value = item.competent_authority_id || "";
     document.querySelector("#action-verifier").value = item.verifier_id || "";
     document.querySelector("#action-issuer-note").value = item.issuer_note || "";
   }
@@ -2460,12 +2550,14 @@ function bindActionEvents(onSaved) {
   const actionDialogElement = document.querySelector("#action-dialog");
   const progressDialogElement = document.querySelector("#progress-dialog");
   const verificationDialogElement = document.querySelector("#verification-dialog");
+  const officeProcessDialogElement = document.querySelector("#office-process-dialog");
   const openNew = () => { populateActionForm(null); actionDialogElement.showModal(); };
   document.querySelector("#add-action-button")?.addEventListener("click", openNew);
   document.querySelector("#add-project-action")?.addEventListener("click", openNew);
   document.querySelector("#action-project")?.addEventListener("change", (event)=>renderAssigneePicker(event.target.value, []));
   document.querySelectorAll(".edit-action-button").forEach((button)=>button.addEventListener("click",()=>{ const item=state.actionItems.find((a)=>a.id===button.dataset.actionId); if(item){populateActionForm(item); actionDialogElement.showModal();} }));
   document.querySelectorAll(".submit-progress-button").forEach((button)=>button.addEventListener("click",()=>{ document.querySelector("#progress-form").reset(); document.querySelector("#progress-action-id").value=button.dataset.actionId; progressDialogElement.showModal(); }));
+  document.querySelectorAll(".process-office-action-button").forEach((button)=>button.addEventListener("click",()=>{ document.querySelector("#office-process-form").reset(); document.querySelector("#office-process-action-id").value=button.dataset.actionId; officeProcessDialogElement.showModal(); }));
   document.querySelectorAll(".verify-progress-button").forEach((button)=>button.addEventListener("click",()=>{ const update=state.actionProgressUpdates.find((u)=>u.id===button.dataset.updateId); document.querySelector("#verification-form").reset(); document.querySelector("#verification-update-id").value=button.dataset.updateId; document.querySelector("#verification-action-id").value=button.dataset.actionId; document.querySelector("#verification-percent").value=update?.claimed_progress_percent ?? 0; verificationDialogElement.showModal(); }));
 
   document.querySelector("#action-form")?.addEventListener("submit", async (event)=>{
@@ -2474,10 +2566,34 @@ function bindActionEvents(onSaved) {
     const selected=[...document.querySelectorAll(".assignee-checkbox:checked")].map((box)=>({user_id:box.value,responsibility_type:document.querySelector(`.assignee-role[data-user-id="${box.value}"]`).value,responsibility_note:document.querySelector(`.assignee-note[data-user-id="${box.value}"]`).value.trim()||null}));
     if(!selected.length){document.querySelector("#action-error").textContent="Select at least one officer having project jurisdiction.";return;}
     if(selected.filter((item)=>item.responsibility_type==="lead").length!==1){document.querySelector("#action-error").textContent="Select exactly one lead officer.";return;}
-    const payload={project_id:document.querySelector("#action-project").value,correspondence_id:document.querySelector("#action-correspondence").value||null,title:document.querySelector("#action-title").value.trim(),description:document.querySelector("#action-description").value.trim()||null,priority:document.querySelector("#action-priority").value,status:document.querySelector("#action-status").value,due_date:document.querySelector("#action-due-date").value||null,reminder_date:document.querySelector("#action-reminder-date").value||null,responsibility_mode:document.querySelector("#action-mode").value,verifier_id:document.querySelector("#action-verifier").value||null,issuer_note:document.querySelector("#action-issuer-note").value.trim()||null};
+    const payload={project_id:document.querySelector("#action-project").value,correspondence_id:document.querySelector("#action-correspondence").value||null,title:document.querySelector("#action-title").value.trim(),description:document.querySelector("#action-description").value.trim()||null,priority:document.querySelector("#action-priority").value,status:document.querySelector("#action-status").value,due_date:document.querySelector("#action-due-date").value||null,reminder_date:document.querySelector("#action-reminder-date").value||null,responsibility_mode:document.querySelector("#action-mode").value,action_type:document.querySelector("#action-type").value,movement_direction:document.querySelector("#action-direction").value,competent_authority_id:document.querySelector("#action-authority").value||null,workflow_stage:id?(state.actionItems.find((item)=>item.id===id)?.workflow_stage||"received"):"received",verifier_id:document.querySelector("#action-verifier").value||null,issuer_note:document.querySelector("#action-issuer-note").value.trim()||null};
     const button=document.querySelector("#action-save-button"); const error=document.querySelector("#action-error"); setButtonLoading(button,true,"Saving..."); error.textContent="";
     try { const action=id ? await updateActionItem(id,payload) : await createActionItem(payload); await deactivateActionAssignees(action.id); for(const assignment of selected) await createActionAssignee({action_id:action.id,...assignment,is_active:true}); actionDialogElement.close(); showToast(id?"Action instruction updated.":"Action issued."); await onSaved(); }
     catch(err){error.textContent=err.message;} finally{setButtonLoading(button,false);}
+  });
+
+  document.querySelector("#office-process-form")?.addEventListener("submit", async (event)=>{
+    event.preventDefault(); const form=event.currentTarget; if(!form.checkValidity()){form.reportValidity();return;}
+    const actionId=document.querySelector("#office-process-action-id").value;
+    const action=state.actionItems.find((item)=>item.id===actionId); if(!action)return;
+    const eventType=document.querySelector("#office-process-event").value;
+    const nextStage=document.querySelector("#office-process-stage").value;
+    const onBehalf=document.querySelector("#office-process-on-behalf").value||null;
+    const authorizePA=document.querySelector("#office-process-authorize-pa").checked;
+    const error=document.querySelector("#office-process-error"); const button=document.querySelector("#office-process-save"); error.textContent="";
+    if(eventType==="forwarded_downward" && !canForwardDownward(action)){ error.textContent="Downward forwarding requires recorded approval or issuer/administrator authority."; return; }
+    if(eventType==="submitted_upward" && !canSubmitUpward(action)){ error.textContent="Upward submission can only be made by the competent EE/SE/CE or authorised issuer."; return; }
+    if(isPAUser() && eventType==="submitted_upward"){ error.textContent="PA may prepare the draft, but cannot independently submit correspondence to a higher office."; return; }
+    setButtonLoading(button,true,"Saving...");
+    try{
+      const updatePayload={workflow_stage:nextStage,office_processing_note:document.querySelector("#office-process-remarks").value.trim()};
+      if(authorizePA){ updatePayload.approved_for_forwarding=true; updatePayload.forwarding_authorized_to=onBehalf; }
+      if(eventType==="closed"){ updatePayload.status="completed"; updatePayload.closure_mode="office_processing"; updatePayload.closed_by=state.profile?.id||null; updatePayload.closed_at=new Date().toISOString(); }
+      if(eventType==="forwarded_downward" || eventType==="submitted_upward") updatePayload.workflow_stage="forwarded";
+      await updateActionItem(actionId,updatePayload);
+      await createActionWorkflowEvent({action_id:actionId,event_type:eventType,from_stage:action.workflow_stage||null,to_stage:updatePayload.workflow_stage||nextStage,on_behalf_of:onBehalf,remarks:document.querySelector("#office-process-remarks").value.trim(),draft_text:document.querySelector("#office-process-draft").value.trim()||null});
+      officeProcessDialogElement.close(); showToast("Office processing recorded."); await onSaved();
+    }catch(err){error.textContent=err.message;}finally{setButtonLoading(button,false);}
   });
 
   document.querySelector("#progress-form")?.addEventListener("submit", async (event)=>{
@@ -2534,7 +2650,7 @@ async function renderWorkspace(projectId) {
   if (state.demo) project = state.projects.find((item) => item.id === projectId);
   else {
     try {
-      [project, state.correspondence, state.actionItems, state.assignableUsers, state.projectJurisdictions, state.actionAssignees, state.actionProgressUpdates] = await Promise.all([getProject(projectId), getCorrespondence(projectId), getActionItems(projectId), getAssignableUsers(), getProjectJurisdictions(), getActionAssignees(), getActionProgressUpdates()]);
+      [project, state.correspondence, state.actionItems, state.assignableUsers, state.projectJurisdictions, state.actionAssignees, state.actionProgressUpdates, state.actionWorkflowEvents] = await Promise.all([getProject(projectId), getCorrespondence(projectId), getActionItems(projectId), getAssignableUsers(), getProjectJurisdictions(), getActionAssignees(), getActionProgressUpdates(), getActionWorkflowEvents()]);
     } catch (error) { showToast(error.message, "error"); }
   }
   root.innerHTML = workspaceTemplate(project);
