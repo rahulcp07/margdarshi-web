@@ -84,6 +84,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); box-sh
 .password-field input { padding-right: 72px; }
 .password-toggle { position: absolute; right: 8px; bottom: 6px; min-height: 30px; border: 0; border-radius: 6px; padding: 4px 8px; background: transparent; color: var(--primary); font-size: 12px; font-weight: 700; }
 .password-toggle:hover { background: #edf3f9; }
+.field-help { display: block; margin-top: -6px; color: var(--muted); font-size: 11px; line-height: 1.45; }
 
 .app-shell { min-height: 100vh; display: grid; grid-template-columns: 245px 1fr; grid-template-rows: 96px 1fr; }
 .topbar { position: sticky; top: 0; z-index: 20; grid-column: 1 / -1; display: grid; grid-template-columns: 275px minmax(260px, 740px) 1fr; align-items: center; gap: 28px; padding: 0 34px 0 24px; background: linear-gradient(90deg, #10447a, #07558e); color: #fff; box-shadow: 0 2px 7px rgba(15,58,102,.18); }
@@ -474,12 +475,44 @@ function loginTemplate() {
         <div class="modal-heading"><div><p class="eyebrow">Initial access</p><h2>Create account</h2><p>Your account will require administrator approval for editing rights.</p></div><button class="icon-button" id="signup-close-button" type="button" data-dialog-close aria-label="Close">${icon("close")}</button></div>
         <div class="form-grid single">
           <label>Full name<input id="signup-name" required placeholder="Your full name" /></label>
-          <label>Designation<input id="signup-designation" required placeholder="e.g. Sectional Engineer" /></label>
+          <label>Designation
+            <select id="signup-designation" required>
+              <option value="">Select designation</option>
+              <optgroup label="Class I">
+                <option>Chief Engineer</option>
+                <option>Superintending Engineer</option>
+                <option>Executive Engineer</option>
+                <option>Assistant Executive Engineer</option>
+                <option>Deputy Engineer (PA), Class I</option>
+                <option>Sub-Divisional Engineer</option>
+                <option>Sub-Divisional Officer</option>
+                <option>Assistant Engineer Grade-I</option>
+              </optgroup>
+              <optgroup label="Class II">
+                <option>Project Officer, Class II</option>
+                <option>Assistant Engineer Grade-II</option>
+                <option>Sectional Engineer</option>
+                <option>Junior Engineer</option>
+              </optgroup>
+              <optgroup label="Ministerial and Supporting Staff">
+                <option>Divisional Accountant</option>
+                <option>Senior Clerk</option>
+                <option>Junior Clerk</option>
+                <option>Data Entry Operator</option>
+              </optgroup>
+              <optgroup label="External Users">
+                <option>Consultant / Authority Engineer</option>
+                <option>Contractor Representative</option>
+                <option>Other</option>
+              </optgroup>
+            </select>
+          </label>
           <label>Email address<input id="signup-email" type="email" required placeholder="Official email address" /></label>
           <label class="password-field">Password
-            <input id="signup-password" type="password" required minlength="8" autocomplete="new-password" placeholder="Minimum 8 characters" />
+            <input id="signup-password" type="password" required minlength="8" autocomplete="new-password" placeholder="Minimum 8 characters" aria-describedby="password-rules" />
             <button class="password-toggle" id="toggle-signup-password" type="button" aria-pressed="false">Show</button>
           </label>
+          <small id="password-rules" class="field-help">Use at least 8 characters with uppercase, lowercase, number and special character.</small>
           <label class="password-field">Re-enter password
             <input id="signup-password-confirm" type="password" required minlength="8" autocomplete="new-password" placeholder="Re-enter your password" />
             <button class="password-toggle" id="toggle-signup-password-confirm" type="button" aria-pressed="false">Show</button>
@@ -781,14 +814,19 @@ function bindLoginEvents() {
   };
   bindPasswordToggle("#toggle-signup-password", "#signup-password");
   bindPasswordToggle("#toggle-signup-password-confirm", "#signup-password-confirm");
-  const clearPasswordMismatch = () => document.querySelector("#signup-password-confirm")?.setCustomValidity("");
-  document.querySelector("#signup-password")?.addEventListener("input", clearPasswordMismatch);
-  document.querySelector("#signup-password-confirm")?.addEventListener("input", clearPasswordMismatch);
+  const clearPasswordValidation = () => {
+    document.querySelector("#signup-password")?.setCustomValidity("");
+    document.querySelector("#signup-password-confirm")?.setCustomValidity("");
+  };
+  document.querySelector("#signup-password")?.addEventListener("input", clearPasswordValidation);
+  document.querySelector("#signup-password-confirm")?.addEventListener("input", clearPasswordValidation);
   document.querySelector("#signup-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     const formElement = event.currentTarget;
     const password = document.querySelector("#signup-password");
     const confirmPassword = document.querySelector("#signup-password-confirm");
+    const strongPassword = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+    password.setCustomValidity(strongPassword.test(password.value) ? "" : "Password must contain at least one uppercase letter, one lowercase letter, one number and one special character.");
     confirmPassword.setCustomValidity(password.value === confirmPassword.value ? "" : "Passwords do not match.");
     if (!formElement.checkValidity()) { formElement.reportValidity(); return; }
     const button = document.querySelector("#signup-button");
