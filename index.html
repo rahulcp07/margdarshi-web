@@ -1799,8 +1799,13 @@ function actionList(items, showProject = true) {
         ${progressHistory(item)}
       </div>
       <div class="action-side">
-        <strong>${Number(item.verified_progress_percent || 0)}% verified</strong>
-        <span>Claimed updates require senior verification</span>
+        ${(() => {
+          const updates = actionUpdatesFor(item.id);
+          const latest = updates.length ? updates[0] : null;
+          const latestClaimed = latest ? Number(latest.claimed_progress_percent || 0) : Number(item.verified_progress_percent || 0);
+          return `<strong>Claimed: ${latestClaimed}% | Verified: ${Number(item.verified_progress_percent || 0)}%</strong>`;
+        })()}
+        <span>Only verified progress is treated as official.</span>
         ${canControlAction(item) ? `<button class="btn secondary edit-action-button" data-action-id="${item.id}">Edit instruction</button>` : ""}
         ${canSubmitProgress(item) ? `<button class="btn primary submit-progress-button" data-action-id="${item.id}">Submit progress</button>` : ""}
       </div>
