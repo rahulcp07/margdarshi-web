@@ -2545,19 +2545,46 @@ function populateActionForm(item = null) {
   renderAssigneePicker(projectId, item ? actionAssigneesFor(item.id) : []);
 }
 
+
+function suggestedWorkflowStage(eventType) {
+  return ({
+    examination_started: "under_examination",
+    report_submitted: "pending_approval",
+    draft_prepared: "draft_prepared",
+    approval_requested: "pending_approval",
+    approved: "approved",
+    forwarded_downward: "forwarded",
+    submitted_upward: "forwarded",
+    response_received: "response_received",
+    closed: "closed",
+  })[eventType] || "received";
+}
+
 function bindActionEvents(onSaved) {
   bindCommonEvents();
   const actionDialogElement = document.querySelector("#action-dialog");
   const progressDialogElement = document.querySelector("#progress-dialog");
   const verificationDialogElement = document.querySelector("#verification-dialog");
   const officeProcessDialogElement = document.querySelector("#office-process-dialog");
+  const officeOutcomeSelect = document.querySelector("#office-process-event");
+  const officeStageSelect = document.querySelector("#office-process-stage");
+  officeOutcomeSelect?.addEventListener("change", () => {
+    if (officeStageSelect) officeStageSelect.value = suggestedWorkflowStage(officeOutcomeSelect.value);
+  });
   const openNew = () => { populateActionForm(null); actionDialogElement.showModal(); };
   document.querySelector("#add-action-button")?.addEventListener("click", openNew);
   document.querySelector("#add-project-action")?.addEventListener("click", openNew);
   document.querySelector("#action-project")?.addEventListener("change", (event)=>renderAssigneePicker(event.target.value, []));
   document.querySelectorAll(".edit-action-button").forEach((button)=>button.addEventListener("click",()=>{ const item=state.actionItems.find((a)=>a.id===button.dataset.actionId); if(item){populateActionForm(item); actionDialogElement.showModal();} }));
   document.querySelectorAll(".submit-progress-button").forEach((button)=>button.addEventListener("click",()=>{ document.querySelector("#progress-form").reset(); document.querySelector("#progress-action-id").value=button.dataset.actionId; progressDialogElement.showModal(); }));
-  document.querySelectorAll(".process-office-action-button").forEach((button)=>button.addEventListener("click",()=>{ document.querySelector("#office-process-form").reset(); document.querySelector("#office-process-action-id").value=button.dataset.actionId; officeProcessDialogElement.showModal(); }));
+  document.querySelectorAll(".process-office-action-button").forEach((button)=>button.addEventListener("click",()=>{
+    document.querySelector("#office-process-form").reset();
+    document.querySelector("#office-process-action-id").value=button.dataset.actionId;
+    const outcome = document.querySelector("#office-process-event");
+    const stage = document.querySelector("#office-process-stage");
+    if (outcome && stage) stage.value = suggestedWorkflowStage(outcome.value);
+    officeProcessDialogElement.showModal();
+  }));
   document.querySelectorAll(".verify-progress-button").forEach((button)=>button.addEventListener("click",()=>{ const update=state.actionProgressUpdates.find((u)=>u.id===button.dataset.updateId); document.querySelector("#verification-form").reset(); document.querySelector("#verification-update-id").value=button.dataset.updateId; document.querySelector("#verification-action-id").value=button.dataset.actionId; document.querySelector("#verification-percent").value=update?.claimed_progress_percent ?? 0; verificationDialogElement.showModal(); }));
 
   document.querySelector("#action-form")?.addEventListener("submit", async (event)=>{
