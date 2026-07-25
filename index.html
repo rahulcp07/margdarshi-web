@@ -517,7 +517,12 @@ function loginTemplate() {
           </div>
           <form id="login-form" novalidate>
             <label>Email address<input id="login-email" type="email" autocomplete="email" placeholder="name@mahapwd.gov.in" required /></label>
-            <label>Password<input id="login-password" type="password" autocomplete="current-password" placeholder="Enter your password" minlength="6" required /></label>
+            <label>Password
+              <div class="password-field">
+                <input id="login-password" type="password" autocomplete="current-password" placeholder="Enter your password" minlength="6" required />
+                <button class="password-toggle" id="toggle-login-password" type="button" aria-label="Show password">Show</button>
+              </div>
+            </label>
             <p id="login-error" class="form-error" role="alert"></p>
             <button class="btn primary full" id="login-button" type="submit">Sign in</button>
           </form>
@@ -1037,6 +1042,14 @@ function bindLoginEvents() {
     } catch (err) { error.textContent = err.message; }
     finally { setButtonLoading(button, false); }
   });
+  document.querySelector("#toggle-login-password")?.addEventListener("click", (event) => {
+    const input = document.querySelector("#login-password");
+    const showing = input.type === "text";
+    input.type = showing ? "password" : "text";
+    event.currentTarget.textContent = showing ? "Show" : "Hide";
+    event.currentTarget.setAttribute("aria-label", showing ? "Show password" : "Hide password");
+  });
+
   document.querySelector("#preview-button").addEventListener("click", () => { location.href = "./?demo=1#projects"; });
 }
 
