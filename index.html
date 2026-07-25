@@ -197,6 +197,34 @@ h1, h2, h3, p { overflow-wrap: anywhere; }
 .correspondence-side .btn { margin-top: 12px; }
 .attachment-help { display: block; margin-top: 6px; color: var(--muted); font-size: 10px; font-weight: 400; line-height: 1.45; }
 .attachment-actions { display: flex; justify-content: flex-end; gap: 7px; flex-wrap: wrap; margin-top: 10px; }
+.action-page { display: grid; gap: 22px; }
+.action-filters { display: flex; gap: 10px; flex-wrap: wrap; }
+.action-filters select, .action-filters input { width: auto; min-width: 165px; }
+.action-list { display: grid; gap: 12px; }
+.action-item { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 18px; padding: 16px 18px; border: 1px solid var(--border); border-radius: 10px; background: #fff; }
+.action-item.overdue { border-left: 4px solid #dc2626; }
+.action-item.due-soon { border-left: 4px solid #f59e0b; }
+.action-item.completed { opacity: .82; }
+.action-topline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.action-status { display: inline-flex; width: fit-content; padding: 4px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; text-transform: capitalize; }
+.action-status.open { color: #9a3412; background: #ffedd5; }
+.action-status.in_progress { color: #1d4ed8; background: #dbeafe; }
+.action-status.awaiting_response { color: #6d28d9; background: #ede9fe; }
+.action-status.completed { color: #166534; background: #dcfce7; }
+.action-status.cancelled { color: #475569; background: #e2e8f0; }
+.action-item h3 { margin: 9px 0 7px; font-size: 15px; }
+.action-meta { display: flex; gap: 14px; flex-wrap: wrap; color: var(--muted); font-size: 11px; }
+.action-description { margin: 9px 0 0; color: #475569; font-size: 12px; line-height: 1.55; }
+.action-side { min-width: 190px; text-align: right; }
+.action-side strong, .action-side span { display: block; }
+.action-side span { margin-top: 5px; color: var(--muted); font-size: 10px; }
+.action-side .btn { margin-top: 10px; }
+.progress-track { height: 7px; margin-top: 10px; border-radius: 999px; background: #e2e8f0; overflow: hidden; }
+.progress-track > span { display: block; height: 100%; background: var(--primary); border-radius: inherit; }
+.action-summary-grid { display: grid; grid-template-columns: repeat(4,minmax(150px,1fr)); gap: 14px; }
+@media (max-width:900px){.action-summary-grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:720px){.action-item{grid-template-columns:1fr}.action-side{text-align:left;min-width:0}}
+
 .file-selected { color: var(--primary); font-weight: 600; }
 
 .module-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 18px; }
@@ -493,6 +521,35 @@ function getOffices() {
 
 
 
+
+function getActionItems(projectId = null) {
+  const projectFilter = projectId ? `&project_id=eq.${encodeURIComponent(projectId)}` : "";
+  return rest(`action_items?select=id,project_id,correspondence_id,title,description,assigned_to,assigned_by,priority,status,due_date,reminder_date,progress_percent,completion_note,completed_at,created_by,created_at,updated_at&order=due_date.asc.nullslast,created_at.desc${projectFilter}`);
+}
+
+function getAssignableUsers() {
+  return rest("profiles?select=id,full_name,designation,email,office_name,role&account_status=eq.approved&is_active=eq.true&order=full_name.asc");
+}
+
+async function createActionItem(payload) {
+  const session = await ensureSession();
+  const rows = await rest("action_items", {
+    method: "POST",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify({ ...payload, created_by: session?.user?.id || null, assigned_by: session?.user?.id || null }),
+  });
+  return rows[0] || null;
+}
+
+async function updateActionItem(id, payload) {
+  const rows = await rest(`action_items?id=eq.${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify({ ...payload, updated_at: new Date().toISOString() }),
+  });
+  return rows[0] || null;
+}
+
 function getDirectoryEntities(includeInactive = false) {
   const activeFilter = includeInactive ? "" : "&is_active=eq.true";
   return rest(`directory_entities?select=id,name,category,short_name,parent_entity_id,email,phone,address,is_frequent,display_order,is_active,remarks,created_at,updated_at&order=is_frequent.desc,display_order.asc,name.asc${activeFilter}`);
@@ -701,6 +758,8 @@ const state = {
   assignments: [],
   correspondence: [],
   directoryEntities: [],
+  actionItems: [],
+  assignableUsers: [],
   demo: new URLSearchParams(location.search).get("demo") === "1",
   loading: true,
   filters: { query: "", highway: "all", status: "all", office: "all" },
@@ -877,6 +936,7 @@ function sidebar(active = "projects") {
     ["dashboard", "dashboard", "Dashboard"],
     ["projects", "projects", "Project Register"],
     ["mail", "correspondence", "Correspondence"],
+    ["clipboard", "actions", "Action Tracking"],
     ["calendar", "calendar", "Calendar"],
     ["reports", "reports", "Reports"],
     ["settings", "admin", "Administration"],
@@ -1559,6 +1619,196 @@ function bindCorrespondenceStatusButtons(onSaved) {
   }));
 }
 
+
+function actionStatusLabel(status) {
+  return ({ open: "Open", in_progress: "In Progress", awaiting_response: "Awaiting Response", completed: "Completed", cancelled: "Cancelled" })[status] || status || "Open";
+}
+
+function actionUserName(userId) {
+  const user = state.assignableUsers.find((item) => item.id === userId);
+  return user?.full_name || "Unassigned";
+}
+
+function actionTimingClass(item) {
+  if (item.status === "completed") return "completed";
+  if (!item.due_date) return "";
+  const today = new Date(); today.setHours(0,0,0,0);
+  const due = new Date(`${item.due_date}T00:00:00`);
+  const days = Math.round((due - today) / 86400000);
+  if (days < 0) return "overdue";
+  if (days <= 3) return "due-soon";
+  return "";
+}
+
+function actionList(items, showProject = true) {
+  if (!items.length) return `<div class="empty-state">${icon("clipboard",42)}<h3>No actions recorded</h3><p>Create the first action item and assign responsibility.</p></div>`;
+  return `<div class="action-list">${items.map((item) => {
+    const project = state.projects.find((p) => p.id === item.project_id);
+    const correspondence = state.correspondence.find((c) => c.id === item.correspondence_id);
+    const canEdit = ["admin","editor"].includes(state.profile?.role) || item.assigned_to === state.profile?.id;
+    return `<article class="action-item ${actionTimingClass(item)}">
+      <div>
+        <div class="action-topline">
+          <span class="priority-pill ${item.priority || "normal"}">${item.priority || "normal"}</span>
+          <span class="action-status ${item.status || "open"}">${actionStatusLabel(item.status)}</span>
+          ${showProject && project ? `<span class="status-pill approved">${escapeHtml(project.project_code || project.project_name)}</span>` : ""}
+          ${correspondence ? `<span class="status-pill pending">Letter: ${escapeHtml(correspondence.letter_number || correspondence.subject || "Linked")}</span>` : ""}
+        </div>
+        <h3>${escapeHtml(item.title)}</h3>
+        <div class="action-meta">
+          <span>Assigned to: ${escapeHtml(actionUserName(item.assigned_to))}</span>
+          ${item.due_date ? `<span>Due: ${formatDate(item.due_date)}</span>` : `<span>No due date</span>`}
+          ${item.reminder_date ? `<span>Reminder: ${formatDate(item.reminder_date)}</span>` : ""}
+        </div>
+        ${item.description ? `<p class="action-description">${escapeHtml(item.description)}</p>` : ""}
+        ${item.completion_note ? `<p class="action-description"><strong>Completion note:</strong> ${escapeHtml(item.completion_note)}</p>` : ""}
+        <div class="progress-track" aria-label="${Number(item.progress_percent || 0)} percent complete"><span style="width:${Number(item.progress_percent || 0)}%"></span></div>
+      </div>
+      <div class="action-side">
+        <strong>${Number(item.progress_percent || 0)}% complete</strong>
+        <span>Updated ${formatDate(item.updated_at || item.created_at)}</span>
+        ${canEdit ? `<button class="btn secondary edit-action-button" data-action-id="${item.id}">Update action</button>` : ""}
+      </div>
+    </article>`;
+  }).join("")}</div>`;
+}
+
+function actionDialog(projectId = "") {
+  return `<dialog id="action-dialog" class="modal compact-modal"><form id="action-form" class="modal-card" novalidate>
+    <div class="modal-heading"><div><p class="eyebrow">Action Tracking</p><h2 id="action-dialog-title">Add action</h2><p>Assign responsibility, due date and progress.</p></div><button class="icon-button" type="button" data-dialog-close>${icon("close")}</button></div>
+    <input id="action-id" type="hidden" />
+    <div class="form-grid single">
+      <label>Project *<select id="action-project" required>${state.projects.map((p)=>`<option value="${p.id}" ${projectId===p.id?"selected":""}>${escapeHtml(p.project_name)}</option>`).join("")}</select></label>
+      <label>Linked correspondence<select id="action-correspondence"><option value="">None</option>${state.correspondence.map((c)=>`<option value="${c.id}">${escapeHtml(c.letter_number || "No number")} — ${escapeHtml(c.subject || "Letter")}</option>`).join("")}</select></label>
+      <label>Action title *<input id="action-title" required placeholder="Short action description" /></label>
+      <label>Detailed instruction<textarea id="action-description" rows="3" placeholder="Work to be completed"></textarea></label>
+      <label>Assign to<select id="action-assigned-to"><option value="">Unassigned</option>${state.assignableUsers.map((u)=>`<option value="${u.id}">${escapeHtml(u.full_name)} — ${escapeHtml(u.designation || "User")}</option>`).join("")}</select></label>
+      <label>Priority<select id="action-priority"><option value="normal">Normal</option><option value="low">Low</option><option value="high">High</option><option value="urgent">Urgent</option></select></label>
+      <label>Status<select id="action-status"><option value="open">Open</option><option value="in_progress">In Progress</option><option value="awaiting_response">Awaiting Response</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select></label>
+      <label>Due date<input id="action-due-date" type="date" /></label>
+      <label>Reminder date<input id="action-reminder-date" type="date" /></label>
+      <label>Progress (%)<input id="action-progress" type="number" min="0" max="100" step="5" value="0" /></label>
+      <label>Completion note<textarea id="action-completion-note" rows="2" placeholder="Required when marking completed"></textarea></label>
+    </div>
+    <p id="action-error" class="form-error"></p>
+    <div class="modal-actions"><button class="btn secondary" type="button" data-dialog-close>Cancel</button><button class="btn primary" id="action-save-button" type="submit">Save action</button></div>
+  </form></dialog>`;
+}
+
+function actionSummary(items) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const open = items.filter((i)=>!["completed","cancelled"].includes(i.status)).length;
+  const overdue = items.filter((i)=>i.due_date && !["completed","cancelled"].includes(i.status) && new Date(`${i.due_date}T00:00:00`) < today).length;
+  const dueSoon = items.filter((i)=>{
+    if (!i.due_date || ["completed","cancelled"].includes(i.status)) return false;
+    const days = Math.round((new Date(`${i.due_date}T00:00:00`) - today)/86400000);
+    return days >= 0 && days <= 3;
+  }).length;
+  const completed = items.filter((i)=>i.status === "completed").length;
+  return { open, overdue, dueSoon, completed };
+}
+
+function actionPageTemplate() {
+  const summary = actionSummary(state.actionItems);
+  const canCreate = ["admin","editor"].includes(state.profile?.role);
+  return `<div class="app-shell">${appHeader()}${sidebar("actions")}
+    <main class="main-content action-page">
+      <div class="breadcrumb"><span>Dashboard</span><b>/</b>Action Tracking</div>
+      <div class="admin-heading"><div><h1>Action Tracking</h1><p>Assign, monitor and close project actions and correspondence follow-ups.</p></div>${canCreate?`<button class="btn primary" id="add-action-button">${icon("plus")}Add action</button>`:""}</div>
+      <section class="action-summary-grid">
+        <div class="admin-metric"><span>Open actions</span><strong>${summary.open}</strong></div>
+        <div class="admin-metric"><span>Overdue</span><strong>${summary.overdue}</strong></div>
+        <div class="admin-metric"><span>Due within 3 days</span><strong>${summary.dueSoon}</strong></div>
+        <div class="admin-metric"><span>Completed</span><strong>${summary.completed}</strong></div>
+      </section>
+      <section class="admin-card"><div class="admin-card-heading"><div><h2>Action register</h2><p>${state.actionItems.length} action${state.actionItems.length===1?"":"s"} recorded.</p></div></div><div style="padding:18px 20px;">${actionList(state.actionItems,true)}</div></section>
+      ${actionDialog("")}
+    </main></div>`;
+}
+
+function projectActionsModule(project) {
+  const items = state.actionItems.filter((item)=>item.project_id === project.id);
+  const canCreate = ["admin","editor"].includes(state.profile?.role);
+  return `<div><div class="module-header"><div><h2>Action Tracking</h2><p>Assigned tasks and follow-up actions for this project.</p></div>${canCreate?`<button class="btn primary" id="add-project-action">${icon("plus")}Add action</button>`:""}</div>${actionList(items,false)}${actionDialog(project.id)}</div>`;
+}
+
+async function renderActionPage() {
+  root.innerHTML = `<div class="loading-screen"><span class="spinner dark"></span><p>Loading actions...</p></div>`;
+  try {
+    [state.actionItems, state.assignableUsers, state.correspondence] = await Promise.all([getActionItems(), getAssignableUsers(), getCorrespondence()]);
+    root.innerHTML = actionPageTemplate();
+    bindActionEvents(renderActionPage);
+  } catch (error) {
+    root.innerHTML = `<div class="loading-screen"><p>${escapeHtml(error.message)}</p></div>`;
+  }
+}
+
+function populateActionForm(item = null) {
+  document.querySelector("#action-form")?.reset();
+  document.querySelector("#action-id").value = item?.id || "";
+  document.querySelector("#action-dialog-title").textContent = item ? "Update action" : "Add action";
+  if (!item) return;
+  document.querySelector("#action-project").value = item.project_id || "";
+  document.querySelector("#action-correspondence").value = item.correspondence_id || "";
+  document.querySelector("#action-title").value = item.title || "";
+  document.querySelector("#action-description").value = item.description || "";
+  document.querySelector("#action-assigned-to").value = item.assigned_to || "";
+  document.querySelector("#action-priority").value = item.priority || "normal";
+  document.querySelector("#action-status").value = item.status || "open";
+  document.querySelector("#action-due-date").value = item.due_date || "";
+  document.querySelector("#action-reminder-date").value = item.reminder_date || "";
+  document.querySelector("#action-progress").value = Number(item.progress_percent || 0);
+  document.querySelector("#action-completion-note").value = item.completion_note || "";
+}
+
+function bindActionEvents(onSaved) {
+  bindCommonEvents();
+  const dialog = document.querySelector("#action-dialog");
+  const openNew = () => { populateActionForm(null); dialog.showModal(); };
+  document.querySelector("#add-action-button")?.addEventListener("click", openNew);
+  document.querySelector("#add-project-action")?.addEventListener("click", openNew);
+  document.querySelectorAll(".edit-action-button").forEach((button)=>button.addEventListener("click",()=>{
+    const item = state.actionItems.find((action)=>action.id === button.dataset.actionId);
+    if (!item) return;
+    populateActionForm(item); dialog.showModal();
+  }));
+  document.querySelector("#action-form")?.addEventListener("submit", async (event)=>{
+    event.preventDefault();
+    const form = event.currentTarget;
+    if (!form.checkValidity()) { form.reportValidity(); return; }
+    const id = document.querySelector("#action-id").value;
+    const status = document.querySelector("#action-status").value;
+    const progress = Number(document.querySelector("#action-progress").value || 0);
+    const completionNote = document.querySelector("#action-completion-note").value.trim() || null;
+    if (status === "completed" && !completionNote) {
+      document.querySelector("#action-error").textContent = "Add a completion note before marking the action completed.";
+      return;
+    }
+    const payload = {
+      project_id: document.querySelector("#action-project").value,
+      correspondence_id: document.querySelector("#action-correspondence").value || null,
+      title: document.querySelector("#action-title").value.trim(),
+      description: document.querySelector("#action-description").value.trim() || null,
+      assigned_to: document.querySelector("#action-assigned-to").value || null,
+      priority: document.querySelector("#action-priority").value,
+      status,
+      due_date: document.querySelector("#action-due-date").value || null,
+      reminder_date: document.querySelector("#action-reminder-date").value || null,
+      progress_percent: status === "completed" ? 100 : progress,
+      completion_note: completionNote,
+      completed_at: status === "completed" ? new Date().toISOString() : null,
+    };
+    const button = document.querySelector("#action-save-button");
+    const error = document.querySelector("#action-error");
+    setButtonLoading(button,true,"Saving..."); error.textContent="";
+    try {
+      if (id) await updateActionItem(id,payload); else await createActionItem(payload);
+      dialog.close(); showToast(id ? "Action updated." : "Action created."); await onSaved();
+    } catch (err) { error.textContent = err.message; }
+    finally { setButtonLoading(button,false); }
+  });
+}
+
 function workspaceTemplate(project) {
   if (!project) return `<div class="app-shell">${appHeader()}${sidebar("projects")}<main class="main-content"><div class="empty-state"><h2>Project not found</h2><button class="btn primary" id="back-to-register">Back to Project Register</button></div></main></div>`;
   return `<div class="app-shell">${appHeader()}${sidebar("projects")}
@@ -1574,7 +1824,7 @@ function workspaceTemplate(project) {
         </div>
       </section>
       <section class="workspace-body">
-        <nav class="tabs" role="tablist">${[["overview","Overview","dashboard"],["correspondence","Correspondence","mail"],["inspections","Inspections","inspection"],["documents","Documents","document"],["timeline","Timeline","timeline"]].map(([key,label,ic],i)=>`<button class="tab ${i===0?"active":""}" data-tab="${key}">${icon(ic,18)}${label}</button>`).join("")}</nav>
+        <nav class="tabs" role="tablist">${[["overview","Overview","dashboard"],["correspondence","Correspondence","mail"],["actions","Actions","clipboard"],["inspections","Inspections","inspection"],["documents","Documents","document"],["timeline","Timeline","timeline"]].map(([key,label,ic],i)=>`<button class="tab ${i===0?"active":""}" data-tab="${key}">${icon(ic,18)}${label}</button>`).join("")}</nav>
         <div id="workspace-tab-content" class="tab-content">${workspaceOverview(project)}</div>
       </section>
     </main>
@@ -1597,7 +1847,7 @@ async function renderWorkspace(projectId) {
   if (state.demo) project = state.projects.find((item) => item.id === projectId);
   else {
     try {
-      [project, state.correspondence] = await Promise.all([getProject(projectId), getCorrespondence(projectId)]);
+      [project, state.correspondence, state.actionItems, state.assignableUsers] = await Promise.all([getProject(projectId), getCorrespondence(projectId), getActionItems(projectId), getAssignableUsers()]);
     } catch (error) { showToast(error.message, "error"); }
   }
   root.innerHTML = workspaceTemplate(project);
@@ -1610,9 +1860,17 @@ async function renderWorkspace(projectId) {
     const key = button.dataset.tab;
     target.innerHTML = key === "overview" ? workspaceOverview(project)
       : key === "correspondence" ? projectCorrespondenceModule(project)
+      : key === "actions" ? projectActionsModule(project)
       : key === "inspections" ? emptyModule("No inspections recorded", "Create site inspections with observations, instructions and photographs.", "inspection")
       : key === "documents" ? emptyModule("No documents uploaded", "Store agreements, approvals, drawings, reports and orders in this workspace.", "document")
       : emptyModule("Project timeline", "Milestones and key events will be shown chronologically here.", "timeline");
+    if (key === "actions") {
+      bindActionEvents(async () => {
+        state.actionItems = await getActionItems(project.id);
+        document.querySelector("#workspace-tab-content").innerHTML = projectActionsModule(project);
+        bindActionEvents(async () => { location.hash = `#project/${project.id}`; });
+      });
+    }
     if (key === "correspondence") {
       document.querySelector("#add-project-correspondence")?.addEventListener("click", () => document.querySelector("#correspondence-dialog").showModal());
       bindCorrespondenceDialogEvents(async () => {
@@ -1643,7 +1901,8 @@ function bindCommonEvents() {
     location.hash = "#admin";
   }));
   document.querySelectorAll("[data-nav='correspondence']").forEach((button) => button.addEventListener("click", () => { location.hash = "#correspondence"; }));
-  document.querySelectorAll(".nav-item:not([data-nav='projects']):not([data-nav='admin']):not([data-nav='correspondence'])").forEach((button) => button.addEventListener("click", () => showToast(`${button.textContent.trim()} will be activated in the next module.`, "info")));
+  document.querySelectorAll("[data-nav='actions']").forEach((button) => button.addEventListener("click", () => { location.hash = "#actions"; }));
+  document.querySelectorAll(".nav-item:not([data-nav='projects']):not([data-nav='admin']):not([data-nav='correspondence']):not([data-nav='actions'])").forEach((button) => button.addEventListener("click", () => showToast(`${button.textContent.trim()} will be activated in the next module.`, "info")));
 }
 
 function bindRegisterEvents() {
@@ -1914,6 +2173,7 @@ async function route() {
   const hash = location.hash || "#projects";
   if (hash === "#admin") return renderAdministration();
   if (hash === "#correspondence") return renderGlobalCorrespondence();
+  if (hash === "#actions") return renderActionPage();
   const match = hash.match(/^#project\/(.+)$/);
   if (match) return renderWorkspace(match[1]);
   renderRegister();
