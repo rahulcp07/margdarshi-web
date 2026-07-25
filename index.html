@@ -162,6 +162,8 @@ h1, h2, h3, p { overflow-wrap: anywhere; }
 .correspondence-page { display: grid; gap: 22px; }
 .correspondence-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; }
 .correspondence-filters { display: flex; gap: 10px; flex-wrap: wrap; }
+.other-office-field[hidden] { display: none !important; }
+
 .correspondence-filters select, .correspondence-filters input { width: auto; min-width: 160px; }
 .correspondence-list { display: grid; gap: 12px; }
 .correspondence-item { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 18px; padding: 16px 18px; border: 1px solid var(--border); border-radius: 10px; background: #fff; }
@@ -1078,6 +1080,57 @@ function correspondenceList(records, projectMap = true) {
   }).join("")}</div>`;
 }
 
+
+function correspondenceOfficeOptions(selected = "") {
+  const priorityNames = [
+    "National Highway Division, Dhule",
+    "National Highway Circle, Pune",
+    "National Highway Subdivision, Jalgaon",
+    "National Highway Subdivision, Sakri",
+  ];
+  const priorityMap = new Map(priorityNames.map((name, index) => [name, index]));
+  const priority = state.offices
+    .filter((office) => priorityMap.has(office.name))
+    .sort((a, b) => priorityMap.get(a.name) - priorityMap.get(b.name));
+  const others = state.offices
+    .filter((office) => !priorityMap.has(office.name))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const option = (office) => `<option value="${escapeHtml(office.name)}" ${selected === office.name ? "selected" : ""}>${escapeHtml(office.name)}</option>`;
+  return `<option value="">Select office</option>
+    ${priority.length ? `<optgroup label="Frequently used offices">${priority.map(option).join("")}</optgroup>` : ""}
+    ${others.length ? `<optgroup label="Other registered offices">${others.map(option).join("")}</optgroup>` : ""}
+    <option value="__other__" ${selected === "__other__" ? "selected" : ""}>Other</option>`;
+}
+
+function bindOtherOfficeFields() {
+  [["#corr-from-select", "#corr-from-other"], ["#corr-to-select", "#corr-to-other"]].forEach(([selectId, otherId]) => {
+    const select = document.querySelector(selectId);
+    const other = document.querySelector(otherId);
+    if (!select || !other) return;
+    const sync = () => {
+      const isOther = select.value === "__other__";
+      other.hidden = !isOther;
+      const input = other.querySelector("input");
+      if (input) {
+        input.required = isOther;
+        if (!isOther) input.value = "";
+      }
+    };
+    select.addEventListener("change", sync);
+    sync();
+  });
+}
+
+function selectedOfficeValue(selectId, otherInputId) {
+  const select = document.querySelector(selectId);
+  if (!select) return null;
+  if (select.value === "__other__") {
+    return document.querySelector(otherInputId)?.value?.trim() || null;
+  }
+  return select.value || null;
+}
+
 function correspondenceDialog(projectId = "") {
   return `<dialog id="correspondence-dialog" class="modal">
     <form id="correspondence-form" class="modal-card" novalidate>
@@ -1089,8 +1142,18 @@ function correspondenceDialog(projectId = "") {
         <label>Letter date<input id="corr-letter-date" type="date" /></label>
         <label>Received/Sent date<input id="corr-movement-date" type="date" /></label>
         <label>Priority<select id="corr-priority"><option value="normal">Normal</option><option value="low">Low</option><option value="high">High</option><option value="urgent">Urgent</option></select></label>
-        <label>From<input id="corr-from" placeholder="Sender/issuing authority" /></label>
-        <label>To<input id="corr-to" placeholder="Recipient/addressee" /></label>
+        <label>From
+          <select id="corr-from-select">${correspondenceOfficeOptions()}</select>
+        </label>
+        <label>To
+          <select id="corr-to-select">${correspondenceOfficeOptions()}</select>
+        </label>
+        <label id="corr-from-other" class="wide other-office-field" hidden>Other sender/issuing authority
+          <input id="corr-from-other-input" placeholder="Type office/organisation name" />
+        </label>
+        <label id="corr-to-other" class="wide other-office-field" hidden>Other recipient/addressee
+          <input id="corr-to-other-input" placeholder="Type office/organisation name" />
+        </label>
         <label class="wide">Subject *<textarea id="corr-subject" rows="2" required placeholder="Subject of the letter"></textarea></label>
         <label class="wide">Reference details<textarea id="corr-reference" rows="2" placeholder="Previous letter/order/circular references"></textarea></label>
         <label class="wide">Action required<textarea id="corr-action" rows="2" placeholder="Action to be taken"></textarea></label>
@@ -1137,6 +1200,7 @@ async function renderGlobalCorrespondence() {
 }
 
 function bindCorrespondenceDialogEvents(onSaved) {
+  bindOtherOfficeFields();
   const form = document.querySelector("#correspondence-form");
   form?.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -1153,8 +1217,8 @@ function bindCorrespondenceDialogEvents(onSaved) {
         letter_date: value("#corr-letter-date"),
         received_or_sent_date: value("#corr-movement-date"),
         priority: value("#corr-priority") || "normal",
-        from_party: value("#corr-from"),
-        to_party: value("#corr-to"),
+        from_party: selectedOfficeValue("#corr-from-select", "#corr-from-other-input"),
+        to_party: selectedOfficeValue("#corr-to-select", "#corr-to-other-input"),
         subject: value("#corr-subject"),
         reference_details: value("#corr-reference"),
         action_required: value("#corr-action"),
