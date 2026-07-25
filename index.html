@@ -271,6 +271,48 @@ async function signUp({ email, password, fullName, designation }) {
   return payload;
 }
 
+async function sendEmailOtp({ email, fullName, designation }) {
+  const response = await fetch(`${CONFIG.supabaseUrl}/auth/v1/otp`, {
+    method: "POST",
+    headers: {
+      apikey: CONFIG.supabasePublishableKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      email,
+      create_user: true,
+      data: { full_name: fullName, designation },
+    }),
+  });
+  return parseResponse(response);
+}
+
+async function verifyEmailOtp({ email, token }) {
+  const response = await fetch(`${CONFIG.supabaseUrl}/auth/v1/verify`, {
+    method: "POST",
+    headers: {
+      apikey: CONFIG.supabasePublishableKey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ email, token, type: "email" }),
+  });
+  const payload = await parseResponse(response);
+  if (payload.access_token) setSession(payload);
+  return payload;
+}
+
+async function setVerifiedUserPassword({ session, password, fullName, designation }) {
+  const response = await fetch(`${CONFIG.supabaseUrl}/auth/v1/user`, {
+    method: "PUT",
+    headers: authHeaders(session.access_token),
+    body: JSON.stringify({
+      password,
+      data: { full_name: fullName, designation },
+    }),
+  });
+  return parseResponse(response);
+}
+
 async function refreshSession(session) {
   if (!session?.refresh_token) return null;
   const response = await fetch(`${CONFIG.supabaseUrl}/auth/v1/token?grant_type=refresh_token`, {
@@ -507,19 +549,29 @@ function loginTemplate() {
               </optgroup>
             </select>
           </label>
-          <label>Email address<input id="signup-email" type="email" required placeholder="Official email address" /></label>
+          <label>Email address
+            <input id="signup-email" type="email" required placeholder="Official email address" autocomplete="email" />
+          </label>
+          <button class="btn secondary full" id="send-otp-button" type="button">Send verification code</button>
+          <div id="otp-section" hidden>
+            <label>Verification code
+              <input id="signup-otp" type="text" inputmode="numeric" autocomplete="one-time-code" minlength="6" maxlength="6" pattern="[0-9]{6}" placeholder="Enter the 6-digit code" />
+            </label>
+            <button class="btn secondary full" id="verify-otp-button" type="button">Verify email</button>
+          </div>
+          <p id="email-verification-status" class="field-help">Verify your email before creating a password.</p>
           <label class="password-field">Password
-            <input id="signup-password" type="password" required minlength="8" autocomplete="new-password" placeholder="Minimum 8 characters" aria-describedby="password-rules" />
-            <button class="password-toggle" id="toggle-signup-password" type="button" aria-pressed="false">Show</button>
+            <input id="signup-password" type="password" required minlength="8" autocomplete="new-password" placeholder="Minimum 8 characters" aria-describedby="password-rules" disabled />
+            <button class="password-toggle" id="toggle-signup-password" type="button" aria-pressed="false" disabled>Show</button>
           </label>
           <small id="password-rules" class="field-help">Use at least 8 characters with uppercase, lowercase, number and special character.</small>
           <label class="password-field">Re-enter password
-            <input id="signup-password-confirm" type="password" required minlength="8" autocomplete="new-password" placeholder="Re-enter your password" />
-            <button class="password-toggle" id="toggle-signup-password-confirm" type="button" aria-pressed="false">Show</button>
+            <input id="signup-password-confirm" type="password" required minlength="8" autocomplete="new-password" placeholder="Re-enter your password" disabled />
+            <button class="password-toggle" id="toggle-signup-password-confirm" type="button" aria-pressed="false" disabled>Show</button>
           </label>
         </div>
         <p id="signup-error" class="form-error"></p>
-        <div class="modal-actions"><button class="btn secondary" id="signup-cancel-button" type="button" data-dialog-close>Cancel</button><button class="btn primary" id="signup-button" type="submit">Create account</button></div>
+        <div class="modal-actions"><button class="btn secondary" id="signup-cancel-button" type="button" data-dialog-close>Cancel</button><button class="btn primary" id="signup-button" type="submit" disabled>Create account</button></div>
       </form>
     </dialog>`;
 }
@@ -798,10 +850,29 @@ function bindLoginEvents() {
     finally { setButtonLoading(button, false); }
   });
   const signupDialog = document.querySelector("#signup-dialog");
+  let verifiedSignupSession = null;
+  let verifiedSignupEmail = "";
   document.querySelector("#open-signup").addEventListener("click", () => signupDialog.showModal());
   const closeSignup = (event) => { event.preventDefault(); event.stopPropagation(); signupDialog.close(); };
   document.querySelector("#signup-close-button")?.addEventListener("click", closeSignup);
   document.querySelector("#signup-cancel-button")?.addEventListener("click", closeSignup);
+
+  const setSignupPasswordEnabled = (enabled) => {
+    ["#signup-password", "#signup-password-confirm", "#toggle-signup-password", "#toggle-signup-password-confirm", "#signup-button"].forEach((selector) => {
+      const element = document.querySelector(selector);
+      if (element) element.disabled = !enabled;
+    });
+  };
+
+  const resetEmailVerification = () => {
+    verifiedSignupSession = null;
+    verifiedSignupEmail = "";
+    setSignupPasswordEnabled(false);
+    const status = document.querySelector("#email-verification-status");
+    if (status) status.textContent = "Verify your email before creating a password.";
+  };
+  document.querySelector("#signup-email")?.addEventListener("input", resetEmailVerification);
+
   const bindPasswordToggle = (buttonId, inputId) => {
     const button = document.querySelector(buttonId);
     const input = document.querySelector(inputId);
@@ -814,18 +885,77 @@ function bindLoginEvents() {
   };
   bindPasswordToggle("#toggle-signup-password", "#signup-password");
   bindPasswordToggle("#toggle-signup-password-confirm", "#signup-password-confirm");
+
+  document.querySelector("#send-otp-button")?.addEventListener("click", async () => {
+    const name = document.querySelector("#signup-name");
+    const designation = document.querySelector("#signup-designation");
+    const email = document.querySelector("#signup-email");
+    const error = document.querySelector("#signup-error");
+    [name, designation, email].forEach((field) => field?.setCustomValidity(""));
+    if (!name.value.trim() || !designation.value || !email.checkValidity()) {
+      if (!name.value.trim()) name.setCustomValidity("Enter your full name.");
+      if (!designation.value) designation.setCustomValidity("Select your designation.");
+      if (!email.checkValidity()) email.setCustomValidity("Enter a valid email address.");
+      document.querySelector("#signup-form").reportValidity();
+      return;
+    }
+    const button = document.querySelector("#send-otp-button");
+    setButtonLoading(button, true, "Sending...");
+    error.textContent = "";
+    resetEmailVerification();
+    try {
+      await sendEmailOtp({ email: email.value.trim(), fullName: name.value.trim(), designation: designation.value });
+      document.querySelector("#otp-section").hidden = false;
+      document.querySelector("#signup-otp").required = true;
+      document.querySelector("#email-verification-status").textContent = "A 6-digit verification code has been sent. Check your inbox and spam folder.";
+      showToast("Verification code sent.");
+    } catch (err) { error.textContent = err.message; }
+    finally { setButtonLoading(button, false); }
+  });
+
+  document.querySelector("#verify-otp-button")?.addEventListener("click", async () => {
+    const email = document.querySelector("#signup-email");
+    const otp = document.querySelector("#signup-otp");
+    const error = document.querySelector("#signup-error");
+    otp.setCustomValidity(/^\d{6}$/.test(otp.value.trim()) ? "" : "Enter the 6-digit verification code.");
+    if (!otp.checkValidity()) { otp.reportValidity(); return; }
+    const button = document.querySelector("#verify-otp-button");
+    setButtonLoading(button, true, "Verifying...");
+    error.textContent = "";
+    try {
+      const result = await verifyEmailOtp({ email: email.value.trim(), token: otp.value.trim() });
+      if (!result.access_token) throw new Error("Email verification did not return a valid session.");
+      verifiedSignupSession = result;
+      verifiedSignupEmail = email.value.trim().toLowerCase();
+      email.readOnly = true;
+      document.querySelector("#send-otp-button").disabled = true;
+      document.querySelector("#otp-section").hidden = true;
+      document.querySelector("#email-verification-status").textContent = "Email verified successfully. You may now create your password.";
+      setSignupPasswordEnabled(true);
+      document.querySelector("#signup-password").focus();
+      showToast("Email verified successfully.");
+    } catch (err) { error.textContent = err.message; }
+    finally { setButtonLoading(button, false); }
+  });
+
   const clearPasswordValidation = () => {
     document.querySelector("#signup-password")?.setCustomValidity("");
     document.querySelector("#signup-password-confirm")?.setCustomValidity("");
   };
   document.querySelector("#signup-password")?.addEventListener("input", clearPasswordValidation);
   document.querySelector("#signup-password-confirm")?.addEventListener("input", clearPasswordValidation);
+
   document.querySelector("#signup-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     const formElement = event.currentTarget;
+    const email = document.querySelector("#signup-email");
     const password = document.querySelector("#signup-password");
     const confirmPassword = document.querySelector("#signup-password-confirm");
     const strongPassword = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+    if (!verifiedSignupSession || verifiedSignupEmail !== email.value.trim().toLowerCase()) {
+      document.querySelector("#signup-error").textContent = "Verify your email before creating the account.";
+      return;
+    }
     password.setCustomValidity(strongPassword.test(password.value) ? "" : "Password must contain at least one uppercase letter, one lowercase letter, one number and one special character.");
     confirmPassword.setCustomValidity(password.value === confirmPassword.value ? "" : "Passwords do not match.");
     if (!formElement.checkValidity()) { formElement.reportValidity(); return; }
@@ -833,10 +963,18 @@ function bindLoginEvents() {
     const error = document.querySelector("#signup-error");
     setButtonLoading(button, true, "Creating..."); error.textContent = "";
     try {
-      const result = await signUp({ email: document.querySelector("#signup-email").value.trim(), password: document.querySelector("#signup-password").value, fullName: document.querySelector("#signup-name").value.trim(), designation: document.querySelector("#signup-designation").value.trim() });
+      await setVerifiedUserPassword({
+        session: verifiedSignupSession,
+        password: password.value,
+        fullName: document.querySelector("#signup-name").value.trim(),
+        designation: document.querySelector("#signup-designation").value,
+      });
+      state.session = verifiedSignupSession;
       signupDialog.close();
-      showToast(result.access_token ? "Account created and signed in." : "Account created. Check your email if confirmation is required.");
-      if (result.access_token) { await loadAuthenticatedData(); location.hash = "#projects"; renderRegister(); }
+      showToast("Account created and email verified.");
+      await loadAuthenticatedData();
+      location.hash = "#projects";
+      renderRegister();
     } catch (err) { error.textContent = err.message; }
     finally { setButtonLoading(button, false); }
   });
