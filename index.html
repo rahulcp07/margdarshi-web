@@ -114,7 +114,51 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); box-sh
 
 
 
-.dashboard-page{display:grid;gap:22px}.dashboard-hero{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;flex-wrap:wrap}.dashboard-hero h1{margin:0;font-size:35px;letter-spacing:-.035em}.dashboard-hero p{margin:8px 0 0;color:var(--muted)}.dashboard-actions{display:flex;gap:10px}.dashboard-kpis{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:14px}.dashboard-kpi,.dashboard-card{border:1px solid var(--border);border-radius:12px;background:#fff}.dashboard-kpi{padding:18px;cursor:pointer;box-shadow:0 12px 28px rgba(15,23,42,.05)}.dashboard-kpi span,.dashboard-kpi strong,.dashboard-kpi small{display:block}.dashboard-kpi span,.dashboard-kpi small{color:var(--muted);font-size:10px}.dashboard-kpi strong{margin-top:7px;font-size:29px}.dashboard-kpi small{margin-top:6px}.dashboard-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(320px,.85fr);gap:16px}.dashboard-card{padding:18px}.dashboard-card-heading{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}.dashboard-card-heading h2{margin:0;font-size:17px}.dashboard-card-heading span{color:var(--muted);font-size:10px}.dashboard-list,.dashboard-projects{display:grid;gap:9px}.dashboard-list-item,.dashboard-project-row{padding:11px 12px;border:1px solid var(--border);border-radius:9px;cursor:pointer}.dashboard-list-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px}.dashboard-list-item strong,.dashboard-list-item span,.dashboard-list-item small,.dashboard-project-row strong,.dashboard-project-row span{display:block}.dashboard-list-item span,.dashboard-list-item small,.dashboard-project-row span{margin-top:3px;color:var(--muted);font-size:9px}.dashboard-list-item .right{text-align:right}.dashboard-project-row header{display:flex;justify-content:space-between;gap:12px}.dashboard-progress{height:7px;border-radius:999px;background:#e2e8f0;overflow:hidden;margin-top:8px}.dashboard-progress i{display:block;height:100%;background:#0f5a91}.dashboard-empty{padding:24px;text-align:center;color:var(--muted)}.quick-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.quick-link{padding:13px;border:1px solid var(--border);border-radius:9px;background:#f8fafc;text-align:left;cursor:pointer}.quick-link strong,.quick-link span{display:block}.quick-link span{margin-top:4px;color:var(--muted);font-size:9px}@media(max-width:1050px){.dashboard-kpis{grid-template-columns:repeat(2,1fr)}.dashboard-grid{grid-template-columns:1fr}}@media(max-width:620px){.dashboard-kpis,.quick-links{grid-template-columns:1fr}}
+.dashboard-page{display:grid;gap:22px}.dashboard-hero{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;flex-wrap:wrap}.dashboard-hero h1{margin:0;font-size:35px;letter-spacing:-.035em}.dashboard-hero p{margin:8px 0 0;color:var(--muted)}.dashboard-actions{display:flex;gap:10px}.dashboard-kpis{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:14px}.dashboard-kpi,.dashboard-card{border:1px solid var(--border);border-radius:12px;background:#fff}.dashboard-kpi{padding:18px;cursor:pointer;box-shadow:0 12px 28px rgba(15,23,42,.05)}.dashboard-kpi span,.dashboard-kpi strong,.dashboard-kpi small{display:block}.dashboard-kpi span,.dashboard-kpi small{color:var(--muted);font-size:10px}.dashboard-kpi strong{margin-top:7px;font-size:29px}.dashboard-kpi small{margin-top:6px}.dashboard-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(320px,.85fr);gap:16px}.dashboard-card{padding:18px}.dashboard-card-heading{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:12px}.dashboard-card-heading h2{margin:0;font-size:17px}.dashboard-card-heading span{color:var(--muted);font-size:10px}.dashboard-list,.dashboard-projects{display:grid;gap:9px}.dashboard-list-item,.dashboard-project-row{padding:11px 12px;border:1px solid var(--border);border-radius:9px;cursor:pointer}.dashboard-list-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px}.dashboard-list-item strong,.dashboard-list-item span,.dashboard-list-item small,.dashboard-project-row strong,.dashboard-project-row span{display:block}.dashboard-list-item span,.dashboard-list-item small,.dashboard-project-row span{margin-top:3px;color:var(--muted);font-size:9px}.dashboard-list-item .right{text-align:right}.dashboard-project-row header{display:flex;justify-content:space-between;gap:12px}.dashboard-progress{height:7px;border-radius:999px;background:#e2e8f0;overflow:hidden;margin-top:8px}.dashboard-progress i{display:block;height:100%;background:#0f5a91}.dashboard-empty{padding:24px;text-align:center;color:var(--muted)}.quick-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+
+.project-hero{
+  background:linear-gradient(135deg,#0f766e 0%,#0f5f63 48%,#164e63 100%)!important;
+  border-bottom:1px solid rgba(255,255,255,.16);
+}
+.project-hero .metric-card{
+  background:rgba(255,255,255,.10)!important;
+  border-color:rgba(255,255,255,.18)!important;
+  box-shadow:none!important;
+}
+.project-hero .metric-card,
+.project-hero .metric-card *{
+  color:#fff!important;
+}
+.project-hero .progress-track{
+  background:rgba(255,255,255,.24)!important;
+}
+.project-hero .progress-fill{
+  background:#a7f3d0!important;
+}
+.project-hero .status-pill{
+  background:#ecfeff!important;
+  color:#155e75!important;
+  border-color:#a5f3fc!important;
+}
+.project-tabs{
+  background:#f8fafc!important;
+  border-bottom:1px solid #dbe4ee!important;
+}
+.project-tab{
+  color:#475569!important;
+}
+.project-tab.active{
+  color:#0f766e!important;
+  border-bottom-color:#0f766e!important;
+  background:#ecfdf5!important;
+}
+.project-tab:hover{
+  color:#0f766e!important;
+  background:#f0fdfa!important;
+}
+
+.project-documents{display:grid;gap:12px}.project-document-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center;padding:13px;border:1px solid var(--border);border-radius:10px;background:#fff}.project-document-row strong,.project-document-row span,.project-document-row small{display:block}.project-document-row span,.project-document-row small{margin-top:4px;color:var(--muted);font-size:10px}.document-actions{display:flex;gap:8px;flex-wrap:wrap}.timeline-list{position:relative;display:grid;gap:0;padding-left:18px}.timeline-list:before{content:"";position:absolute;left:5px;top:8px;bottom:8px;width:2px;background:#dbe4ee}.timeline-item{position:relative;padding:0 0 18px 18px}.timeline-item:last-child{padding-bottom:0}.timeline-item:before{content:"";position:absolute;left:-18px;top:6px;width:10px;height:10px;border-radius:50%;background:#0f5a91;border:2px solid #fff;box-shadow:0 0 0 2px #bfd3e5}.timeline-item strong,.timeline-item span,.timeline-item small{display:block}.timeline-item span{margin-top:4px;color:#475569;font-size:10px}.timeline-item small{margin-top:4px;color:var(--muted);font-size:9px}.module-header{display:flex;justify-content:space-between;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:14px}.module-header h2{margin:0}.module-header p{margin:5px 0 0;color:var(--muted);font-size:11px}
+.quick-link{padding:13px;border:1px solid var(--border);border-radius:9px;background:#f8fafc;text-align:left;cursor:pointer}.quick-link strong,.quick-link span{display:block}.quick-link span{margin-top:4px;color:var(--muted);font-size:9px}@media(max-width:1050px){.dashboard-kpis{grid-template-columns:repeat(2,1fr)}.dashboard-grid{grid-template-columns:1fr}}@media(max-width:620px){.dashboard-kpis,.quick-links{grid-template-columns:1fr}}
 .reports-page{display:grid;gap:22px}.report-toolbar{display:flex;justify-content:space-between;gap:14px;align-items:center;flex-wrap:wrap}.report-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.report-controls select{width:auto;min-width:190px}.report-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.report-card{padding:18px;border:1px solid var(--border);border-radius:12px;background:#fff}.report-card h2{margin:0 0 6px;font-size:18px}.report-table-wrap{overflow-x:auto;margin-top:14px}.report-table{width:100%;border-collapse:collapse;font-size:11px}.report-table th,.report-table td{padding:9px 10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}.report-table th{color:#64748b;font-size:9px;text-transform:uppercase;letter-spacing:.05em;background:#f8fafc}.report-kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(130px,1fr));gap:12px;margin-top:14px}.report-kpi{padding:14px;border:1px solid var(--border);border-radius:10px;background:#f8fafc}.report-kpi span,.report-kpi strong{display:block}.report-kpi span{color:var(--muted);font-size:10px}.report-kpi strong{margin-top:5px;font-size:23px}.report-section-title{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}.report-section-title h3{margin:0;font-size:15px}.report-status-list{display:grid;gap:8px;margin-top:12px}.report-status-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 11px;border:1px solid var(--border);border-radius:8px;background:#fff}.report-status-row strong,.report-status-row span{display:block}.report-status-row span{margin-top:3px;color:var(--muted);font-size:10px}@media(max-width:980px){.report-grid{grid-template-columns:1fr}.report-kpi-grid{grid-template-columns:repeat(2,1fr)}}@media print{
   @page{size:A4 portrait;margin:10mm}
   body{background:#fff!important}
@@ -1243,7 +1287,7 @@ function sidebar(active = "projects") {
   ];
   return `<aside class="sidebar">
     <nav>${items.map(([ic, key, label]) => `<button class="nav-item ${active === key ? "active" : ""}" data-nav="${key}">${icon(ic)}<span>${label}</span>${key === "admin" ? icon("arrow", 16) : ""}</button>`).join("")}</nav>
-    <div class="sidebar-footer"><div class="road-mark">NH</div><strong>National Highway Wing</strong><span>Building safer, better highways · Build R3</span></div>
+    <div class="sidebar-footer"><div class="road-mark">NH</div><strong>National Highway Wing</strong><span>Building safer, better highways · Build R4.1</span></div>
   </aside>`;
 }
 
@@ -2796,6 +2840,66 @@ function bindActionEvents(onSaved) {
   });
 }
 
+
+function projectDocumentsModule(project){
+  const correspondenceDocs=state.correspondence
+    .filter(item=>item.project_id===project.id&&item.attachment_path)
+    .map(item=>({
+      kind:"Correspondence attachment",
+      title:item.attachment_name||item.subject||"Attachment",
+      detail:`${item.letter_number||"No letter number"} · ${item.subject||"Correspondence"}`,
+      date:item.letter_date||item.created_at,
+      source:"correspondence",
+      id:item.id,
+      size:item.attachment_size_bytes,
+      mime:item.attachment_mime_type
+    }));
+  const inspectionDocs=state.inspectionPhotos
+    .filter(photo=>state.inspections.some(i=>i.id===photo.inspection_id&&i.project_id===project.id))
+    .map(photo=>{
+      const inspection=state.inspections.find(i=>i.id===photo.inspection_id);
+      return{
+        kind:"Inspection photograph",
+        title:photo.file_name||"Inspection photograph",
+        detail:`${(inspection?.inspection_type||"general").replaceAll("_"," ")} · ${chainageLabel(inspection||{})}`,
+        date:photo.uploaded_at||inspection?.inspection_date,
+        source:"inspection",
+        id:photo.id,
+        inspectionId:photo.inspection_id,
+        size:photo.size_bytes,
+        mime:photo.mime_type
+      };
+    });
+  const docs=[...correspondenceDocs,...inspectionDocs].sort((a,b)=>new Date(b.date||0)-new Date(a.date||0));
+  return`<div><div class="module-header"><div><h2>Documents</h2><p>Project-related correspondence attachments and inspection photographs.</p></div><span>${docs.length} file${docs.length===1?"":"s"}</span></div>
+    ${docs.length?`<div class="project-documents">${docs.map(doc=>`<div class="project-document-row"><div><strong>${escapeHtml(doc.title)}</strong><span>${escapeHtml(doc.kind)} · ${escapeHtml(doc.detail)}</span><small>${formatDate(doc.date)}${doc.size?` · ${formatFileSize(doc.size)}`:""}${doc.mime?` · ${escapeHtml(doc.mime)}`:""}</small></div><div class="document-actions"><button class="btn secondary project-document-open" data-source="${doc.source}" data-id="${doc.id}" data-inspection-id="${doc.inspectionId||""}">Open</button></div></div>`).join("")}</div>`:`<div class="module-empty">${icon("document",42)}<h2>No project files yet</h2><p>Attachments added through Correspondence and photographs added through Inspections will appear here automatically.</p></div>`}
+  </div>`;
+}
+function projectTimelineModule(project){
+  const events=[];
+  state.correspondence.filter(i=>i.project_id===project.id).forEach(i=>events.push({date:i.letter_date||i.created_at,title:i.subject||"Correspondence",detail:`${i.direction||"Correspondence"} · ${i.letter_number||"No letter number"}`,type:"Correspondence"}));
+  state.actionItems.filter(i=>i.project_id===project.id).forEach(i=>events.push({date:i.created_at,title:i.title,detail:`Action issued · ${actionStatusLabel(i.status)}${i.due_date?` · Due ${formatDate(i.due_date)}`:""}`,type:"Action"}));
+  state.inspections.filter(i=>i.project_id===project.id).forEach(i=>events.push({date:i.inspection_date||i.created_at,title:`${(i.inspection_type||"general").replaceAll("_"," ")} inspection`,detail:`${chainageLabel(i)} · ${inspectionStatusLabel(i.status)}`,type:"Inspection"}));
+  (state.calendarEvents||[]).filter(i=>i.project_id===project.id).forEach(i=>events.push({date:i.start_date||i.event_date||i.start_time||i.date,title:i.title||i.event_title||"Calendar event",detail:i.description||i.event_type||"Milestone",type:"Calendar"}));
+  const sorted=events.filter(e=>e.date).sort((a,b)=>new Date(b.date)-new Date(a.date));
+  return`<div><div class="module-header"><div><h2>Project timeline</h2><p>Chronological history compiled from correspondence, actions, inspections, and calendar milestones.</p></div><span>${sorted.length} event${sorted.length===1?"":"s"}</span></div>
+    ${sorted.length?`<div class="timeline-list">${sorted.map(e=>`<div class="timeline-item"><strong>${escapeHtml(e.title)}</strong><span>${escapeHtml(e.detail)}</span><small>${escapeHtml(e.type)} · ${formatDate(e.date)}</small></div>`).join("")}</div>`:`<div class="module-empty">${icon("timeline",42)}<h2>No timeline events yet</h2><p>Project activity will appear here automatically as records are added.</p></div>`}
+  </div>`;
+}
+function bindProjectDocumentEvents(){
+  document.querySelectorAll(".project-document-open").forEach(button=>button.addEventListener("click",async()=>{
+    try{
+      if(button.dataset.source==="correspondence"){
+        const item=state.correspondence.find(i=>i.id===button.dataset.id);
+        await openCorrespondenceAttachment(item);
+      }else{
+        const photo=state.inspectionPhotos.find(i=>i.id===button.dataset.id);
+        await openInspectionPhoto(photo);
+      }
+    }catch(error){showToast(error.message,"error");}
+  }));
+}
+
 function workspaceTemplate(project) {
   if (!project) return `<div class="app-shell">${appHeader()}${sidebar("projects")}<main class="main-content"><div class="empty-state"><h2>Project not found</h2><button class="btn primary" id="back-to-register">Back to Project Register</button></div></main></div>`;
   return `<div class="app-shell">${appHeader()}${sidebar("projects")}
@@ -2834,7 +2938,7 @@ async function renderWorkspace(projectId) {
   if (state.demo) project = state.projects.find((item) => item.id === projectId);
   else {
     try {
-      [project, state.correspondence, state.actionItems, state.assignableUsers, state.projectJurisdictions, state.actionAssignees, state.actionProgressUpdates, state.actionWorkflowEvents, state.inspections, state.inspectionPhotos] = await Promise.all([getProject(projectId), getCorrespondence(projectId), getActionItems(projectId), getAssignableUsers(), getProjectJurisdictions(), getActionAssignees(), getActionProgressUpdates(), getActionWorkflowEvents(), getInspections(projectId), getInspectionPhotos()]);
+      [project, state.correspondence, state.actionItems, state.assignableUsers, state.projectJurisdictions, state.actionAssignees, state.actionProgressUpdates, state.actionWorkflowEvents, state.inspections, state.inspectionPhotos, state.calendarEvents] = await Promise.all([getProject(projectId), getCorrespondence(projectId), getActionItems(projectId), getAssignableUsers(), getProjectJurisdictions(), getActionAssignees(), getActionProgressUpdates(), getActionWorkflowEvents(), getInspections(projectId), getInspectionPhotos(), getCalendarEvents()]);
     } catch (error) { showToast(error.message, "error"); }
   }
   root.innerHTML = workspaceTemplate(project);
@@ -2849,8 +2953,9 @@ async function renderWorkspace(projectId) {
       : key === "correspondence" ? projectCorrespondenceModule(project)
       : key === "actions" ? projectActionsModule(project)
       : key === "inspections" ? projectInspectionsModule(project)
-      : key === "documents" ? emptyModule("No documents uploaded", "Store agreements, approvals, drawings, reports and orders in this workspace.", "document")
-      : emptyModule("Project timeline", "Milestones and key events will be shown chronologically here.", "timeline");
+      : key === "documents" ? projectDocumentsModule(project)
+      : projectTimelineModule(project);
+    if (key === "documents") bindProjectDocumentEvents();
     if (key === "inspections") { bindInspectionEvents(async()=>{[state.inspections,state.inspectionPhotos]=await Promise.all([getInspections(project.id),getInspectionPhotos()]);document.querySelector("#workspace-tab-content").innerHTML=projectInspectionsModule(project);bindInspectionEvents(async()=>{location.hash=`#project/${project.id}`;});}); }
     if (key === "actions") {
       bindActionEvents(async () => {
