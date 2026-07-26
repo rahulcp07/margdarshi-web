@@ -117,7 +117,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); box-sh
 .global-search-result strong{font-size:12px;color:#0f172a}
 .global-search-result span{margin-top:3px;font-size:10px;color:#475569}
 .global-search-result small{font-size:9px;color:#64748b;text-align:right}
-.global-search-empty{padding:22px;text-align:center;color:#64748b;font-size:11px}.search-highlight{outline:4px solid #14b8a6!important;outline-offset:3px!important;background:#ccfbf1!important;box-shadow:0 0 0 7px rgba(20,184,166,.16)!important;transition:.2s}
+.global-search-empty{padding:22px;text-align:center;color:#64748b;font-size:11px}.search-highlight{outline:4px solid #14b8a6!important;outline-offset:3px!important;background:#ccfbf1!important;box-shadow:0 0 0 7px rgba(20,184,166,.16)!important;transition:.2s}.calendar-target-highlight{outline:4px solid #8b5cf6!important;outline-offset:3px!important;background:#f5f3ff!important;box-shadow:0 0 0 7px rgba(139,92,246,.16)!important;transition:.2s}
 .global-search-section{padding:7px 14px;background:#f8fafc;color:#64748b;font-size:9px;text-transform:uppercase;letter-spacing:.06em;font-weight:700}
 @media(max-width:620px){.global-search-results{position:fixed;left:10px;right:10px;top:70px;max-height:60vh}}
 
@@ -1350,7 +1350,7 @@ function sidebar(active = "projects") {
   ];
   return `<aside class="sidebar">
     <nav>${items.map(([ic, key, label]) => `<button class="nav-item ${active === key ? "active" : ""}" data-nav="${key}">${icon(ic)}<span>${label}</span>${key === "admin" ? icon("arrow", 16) : ""}</button>`).join("")}</nav>
-    <div class="sidebar-footer"><div class="road-mark">NH</div><strong>National Highway Wing</strong><span>Building safer, better highways · Build R5.3</span></div>
+    <div class="sidebar-footer"><div class="road-mark">NH</div><strong>National Highway Wing</strong><span>Building safer, better highways · Build R5.4</span></div>
   </aside>`;
 }
 
@@ -2224,10 +2224,10 @@ function calendarAgenda(items) {
   if (!monthItems.length) return `<div class="empty-state">${icon("calendar",42)}<h3>No events this month</h3><p>Add a meeting, inspection, hearing or review.</p></div>`;
   return `<div class="calendar-agenda">${monthItems.map((item) => {
     const project = state.projects.find((project) => project.id === item.projectId);
-    return `<article class="calendar-agenda-item">
+    return `<article class="calendar-agenda-item" data-calendar-item-id="${escapeHtml(item.id)}">
       <div><strong>${formatDate(item.date)}</strong><span>${escapeHtml(item.kind.replace("_", " "))}</span></div>
       <div><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.detail || "")}${project ? ` · ${escapeHtml(project.project_name)}` : ""}</span></div>
-      <div>${item.editable ? `<button class="btn secondary edit-calendar-event" data-event-id="${item.sourceId}">Edit</button>` : item.actionId ? `<button class="btn secondary open-calendar-action">Open action</button>` : ""}</div>
+      <div>${item.editable ? `<button class="btn secondary edit-calendar-event" data-event-id="${item.sourceId}">Edit</button>` : item.actionId ? `<button class="btn secondary open-calendar-action" data-action-id="${item.actionId}">Open exact action</button>` : item.projectId ? `<button class="btn secondary open-calendar-project" data-project-id="${item.projectId}">Open project</button>` : ""}</div>
     </article>`;
   }).join("")}</div>`;
 }
@@ -2301,6 +2301,42 @@ function populateCalendarForm(event = null) {
   document.querySelector("#calendar-description").value = event?.description || "";
 }
 
+
+function openExactCalendarAction(actionId){
+  location.hash="#actions";
+  route();
+  let attempts=0;
+  const openAction=()=>{
+    attempts+=1;
+    try{
+      if(typeof openActionDetails==="function"){
+        openActionDetails(actionId);
+        return;
+      }
+    }catch(error){}
+    if(attempts<12)setTimeout(openAction,180);
+  };
+  setTimeout(openAction,120);
+}
+
+function openCalendarItem(item,dialog){
+  if(!item)return;
+  if(item.kind==="manual"&&item.editable){
+    const event=state.calendarEvents.find(entry=>entry.id===item.sourceId);
+    populateCalendarForm(event);
+    dialog.showModal();
+    return;
+  }
+  if(item.actionId){
+    openExactCalendarAction(item.actionId);
+    return;
+  }
+  if(item.projectId){
+    location.hash=`#project/${item.projectId}`;
+    route();
+  }
+}
+
 function bindCalendarEvents() {
   bindCommonEvents();
   document.querySelector("#calendar-prev")?.addEventListener("click", () => {
@@ -2322,15 +2358,16 @@ function bindCalendarEvents() {
     if (!event) return;
     populateCalendarForm(event); dialog.showModal();
   }));
-  document.querySelectorAll(".open-calendar-action").forEach((button) => button.addEventListener("click", () => { location.hash = "#actions"; }));
+  document.querySelectorAll(".open-calendar-action").forEach((button) => button.addEventListener("click", () => {
+    openExactCalendarAction(button.dataset.actionId);
+  }));
+  document.querySelectorAll(".open-calendar-project").forEach((button) => button.addEventListener("click", () => {
+    location.hash=`#project/${button.dataset.projectId}`;
+    route();
+  }));
   document.querySelectorAll(".calendar-event-chip").forEach((button) => button.addEventListener("click", () => {
     const item = calendarItems().find((entry) => entry.id === button.dataset.calendarItem);
-    if (!item) return;
-    if (item.kind === "manual" && item.editable) {
-      const event = state.calendarEvents.find((entry) => entry.id === item.sourceId);
-      populateCalendarForm(event); dialog.showModal();
-    } else if (item.actionId) location.hash = "#actions";
-    else if (item.projectId) location.hash = `#project/${item.projectId}`;
+    openCalendarItem(item,dialog);
   }));
 
   document.querySelector("#calendar-event-form")?.addEventListener("submit", async (event) => {
