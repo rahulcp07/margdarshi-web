@@ -107,6 +107,20 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); box-sh
 .global-search { height: 54px; display: flex; align-items: center; gap: 12px; padding: 0 14px; border-radius: 10px; background: #fff; color: var(--muted); box-shadow: 0 5px 16px rgba(0,0,0,.13); }
 .global-search input { border: 0; box-shadow: none; padding: 0; background: transparent; }
 .global-search kbd { padding: 4px 7px; border: 1px solid #dce3ea; border-radius: 5px; color: #64748b; background: #f6f8fa; white-space: nowrap; }
+.global-search{position:relative}
+.global-search-results{position:absolute;left:0;right:0;top:62px;z-index:80;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 20px 50px rgba(15,23,42,.20);overflow:hidden;max-height:430px;overflow-y:auto;color:#0f172a}
+.global-search-results[hidden]{display:none}
+.global-search-result{width:100%;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;padding:12px 14px;border:0;border-bottom:1px solid var(--border);background:#fff;text-align:left;cursor:pointer}
+.global-search-result:last-child{border-bottom:0}
+.global-search-result:hover,.global-search-result.active{background:#f0fdfa}
+.global-search-result strong,.global-search-result span,.global-search-result small{display:block}
+.global-search-result strong{font-size:12px;color:#0f172a}
+.global-search-result span{margin-top:3px;font-size:10px;color:#475569}
+.global-search-result small{font-size:9px;color:#64748b;text-align:right}
+.global-search-empty{padding:22px;text-align:center;color:#64748b;font-size:11px}
+.global-search-section{padding:7px 14px;background:#f8fafc;color:#64748b;font-size:9px;text-transform:uppercase;letter-spacing:.06em;font-weight:700}
+@media(max-width:620px){.global-search-results{position:fixed;left:10px;right:10px;top:70px;max-height:60vh}}
+
 .topbar-actions { justify-self: end; display: flex; align-items: center; gap: 18px; }
 .notification-button { position: relative; display: grid; place-items: center; border: 0; background: transparent; color: #fff; }
 .notification-button span { position: absolute; top: -9px; right: -8px; min-width: 19px; height: 19px; display: grid; place-items: center; border: 2px solid #0b5188; border-radius: 999px; background: #ef4444; font-size: 10px; font-weight: 700; }
@@ -1336,7 +1350,7 @@ function sidebar(active = "projects") {
   ];
   return `<aside class="sidebar">
     <nav>${items.map(([ic, key, label]) => `<button class="nav-item ${active === key ? "active" : ""}" data-nav="${key}">${icon(ic)}<span>${label}</span>${key === "admin" ? icon("arrow", 16) : ""}</button>`).join("")}</nav>
-    <div class="sidebar-footer"><div class="road-mark">NH</div><strong>National Highway Wing</strong><span>Building safer, better highways · Build R4.2</span></div>
+    <div class="sidebar-footer"><div class="road-mark">NH</div><strong>National Highway Wing</strong><span>Building safer, better highways · Build R5</span></div>
   </aside>`;
 }
 
@@ -1346,7 +1360,7 @@ function appHeader() {
   const initials = name.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
   return `<header class="topbar">
     <div class="brand-lockup"><div class="emblem">NH</div><div><strong>MARGDARSHI</strong><span>National Highway Division Dhule</span></div></div>
-    <div class="global-search">${icon("search", 19)}<input aria-label="Global search" placeholder="Search projects, letters, cases..." /><kbd>Ctrl K</kbd></div>
+    <div class="global-search">${icon("search", 19)}<input id="global-search-input" aria-label="Global search" autocomplete="off" placeholder="Search projects, letters, actions, inspections..." /><kbd>Ctrl K</kbd><div id="global-search-results" class="global-search-results" hidden></div></div>
     <div class="topbar-actions"><button class="notification-button" id="notification-button" aria-label="Notifications">${icon("bell")}<span class="${unreadNotificationCount() ? "" : "notification-zero"}">${unreadNotificationCount()}</span></button><div class="user-menu"><div class="avatar">${initials}</div><div><strong>${name}</strong><span>${designation}</span></div></div><button class="icon-button" id="logout-button" title="Sign out">${icon("logout")}</button></div>
   </header>`;
 }
@@ -3030,7 +3044,107 @@ async function renderWorkspace(projectId) {
   }));
 }
 
+
+let globalSearchTimer=null;
+let globalSearchActiveIndex=-1;
+
+async function ensureGlobalSearchData(){
+  const requests=[];
+  if(!state.projects?.length) requests.push(getProjects().then(v=>state.projects=v));
+  if(!state.correspondence?.length) requests.push(getCorrespondence().then(v=>state.correspondence=v));
+  if(!state.actionItems?.length) requests.push(getActionItems().then(v=>state.actionItems=v));
+  if(!state.inspections?.length) requests.push(getInspections().then(v=>state.inspections=v));
+  if(requests.length) await Promise.all(requests);
+}
+
+function globalSearchItems(query){
+  const q=query.trim().toLowerCase();
+  if(q.length<2)return[];
+  const includes=(...values)=>values.some(v=>String(v||"").toLowerCase().includes(q));
+  const projectResults=(state.projects||[]).filter(p=>includes(p.project_name,p.project_code,p.status,p.mode)).map(p=>({
+    type:"Project",title:p.project_name,detail:`${p.project_code||"No code"} · ${p.status||"—"}`,date:"",route:`#project/${p.id}`
+  }));
+  const correspondenceResults=(state.correspondence||[]).filter(c=>includes(c.subject,c.letter_number,c.from_party,c.to_party,c.status)).map(c=>({
+    type:"Correspondence",title:c.subject||"Untitled correspondence",detail:`${c.letter_number||"No letter number"} · ${reportProjectName(c.project_id)}`,date:formatDate(c.letter_date),route:"#correspondence"
+  }));
+  const actionResults=(state.actionItems||[]).filter(a=>includes(a.title,a.description,a.priority,a.status)).map(a=>({
+    type:"Action",title:a.title,detail:`${reportProjectName(a.project_id)} · ${actionStatusLabel(a.status)}`,date:a.due_date?`Due ${formatDate(a.due_date)}`:"",route:"#actions"
+  }));
+  const inspectionResults=(state.inspections||[]).filter(i=>includes(i.inspection_type,i.observations,i.location_description,i.severity,i.status,chainageLabel(i))).map(i=>({
+    type:"Inspection",title:`${(i.inspection_type||"general").replaceAll("_"," ")} inspection`,detail:`${reportProjectName(i.project_id)} · ${chainageLabel(i)}`,date:formatDate(i.inspection_date),route:"#inspections"
+  }));
+  return [...projectResults,...correspondenceResults,...actionResults,...inspectionResults].slice(0,24);
+}
+
+function renderGlobalSearchResults(items){
+  const box=document.querySelector("#global-search-results");
+  if(!box)return;
+  globalSearchActiveIndex=-1;
+  if(!items.length){
+    box.innerHTML=`<div class="global-search-empty">No matching records found.</div>`;
+    box.hidden=false;
+    return;
+  }
+  const groups=["Project","Correspondence","Action","Inspection"];
+  box.innerHTML=groups.map(group=>{
+    const rows=items.filter(item=>item.type===group);
+    if(!rows.length)return"";
+    return`<div class="global-search-section">${group}</div>${rows.map(item=>`<button class="global-search-result" data-route="${item.route}"><div><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.detail)}</span></div><small>${escapeHtml(item.date||item.type)}</small></button>`).join("")}`;
+  }).join("");
+  box.hidden=false;
+  box.querySelectorAll(".global-search-result").forEach(button=>button.addEventListener("click",()=>{
+    box.hidden=true;
+    document.querySelector("#global-search-input").value="";
+    location.hash=button.dataset.route;
+    route();
+  }));
+}
+
+async function runGlobalSearch(){
+  const input=document.querySelector("#global-search-input");
+  const box=document.querySelector("#global-search-results");
+  if(!input||!box)return;
+  const query=input.value.trim();
+  if(query.length<2){box.hidden=true;box.innerHTML="";return;}
+  box.hidden=false;
+  box.innerHTML=`<div class="global-search-empty">Searching...</div>`;
+  try{
+    await ensureGlobalSearchData();
+    renderGlobalSearchResults(globalSearchItems(query));
+  }catch(error){
+    box.innerHTML=`<div class="global-search-empty">${escapeHtml(error.message)}</div>`;
+  }
+}
+
+function bindGlobalSearch(){
+  const input=document.querySelector("#global-search-input");
+  const box=document.querySelector("#global-search-results");
+  if(!input||!box)return;
+  input.addEventListener("input",()=>{
+    clearTimeout(globalSearchTimer);
+    globalSearchTimer=setTimeout(runGlobalSearch,220);
+  });
+  input.addEventListener("keydown",(event)=>{
+    const results=[...box.querySelectorAll(".global-search-result")];
+    if(event.key==="ArrowDown"&&results.length){
+      event.preventDefault();globalSearchActiveIndex=(globalSearchActiveIndex+1)%results.length;
+    }else if(event.key==="ArrowUp"&&results.length){
+      event.preventDefault();globalSearchActiveIndex=(globalSearchActiveIndex-1+results.length)%results.length;
+    }else if(event.key==="Enter"&&globalSearchActiveIndex>=0&&results[globalSearchActiveIndex]){
+      event.preventDefault();results[globalSearchActiveIndex].click();return;
+    }else if(event.key==="Escape"){
+      box.hidden=true;input.blur();return;
+    }else{return;}
+    results.forEach((item,index)=>item.classList.toggle("active",index===globalSearchActiveIndex));
+    results[globalSearchActiveIndex]?.scrollIntoView({block:"nearest"});
+  });
+  document.addEventListener("click",(event)=>{
+    if(!event.target.closest(".global-search")) box.hidden=true;
+  },{once:true});
+}
+
 function bindCommonEvents() {
+  bindGlobalSearch();
   document.querySelector("#notification-button")?.addEventListener("click", () => { location.hash = "#notifications"; });
   document.querySelector("#logout-button")?.addEventListener("click", async () => {
     if (state.demo) { location.href = "./"; return; }
@@ -3336,6 +3450,15 @@ async function loadAuthenticatedData() {
   ]);
   state.notifications = buildNotifications();
 }
+
+
+document.addEventListener("keydown",(event)=>{
+  if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="k"){
+    event.preventDefault();
+    const input=document.querySelector("#global-search-input");
+    if(input){input.focus();input.select();}
+  }
+});
 
 async function route() {
   const hash = location.hash || "#dashboard";
