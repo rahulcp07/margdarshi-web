@@ -1350,7 +1350,7 @@ function sidebar(active = "projects") {
   ];
   return `<aside class="sidebar">
     <nav>${items.map(([ic, key, label]) => `<button class="nav-item ${active === key ? "active" : ""}" data-nav="${key}">${icon(ic)}<span>${label}</span>${key === "admin" ? icon("arrow", 16) : ""}</button>`).join("")}</nav>
-    <div class="sidebar-footer"><div class="road-mark">NH</div><strong>National Highway Wing</strong><span>Building safer, better highways · Build R5.2</span></div>
+    <div class="sidebar-footer"><div class="road-mark">NH</div><strong>National Highway Wing</strong><span>Building safer, better highways · Build R5.3</span></div>
   </aside>`;
 }
 
@@ -2468,7 +2468,7 @@ function notificationsTemplate() {
             <div><h3>${escapeHtml(item.title)}</h3><p>${escapeHtml(item.message)}</p><small>${escapeHtml(notificationTypeLabel(item.type))}</small></div>
             <div class="notification-actions">
               ${!item.state?.read_at ? `<button class="btn secondary notification-read-button" data-key="${escapeHtml(item.key)}">Mark read</button>` : ""}
-              <button class="btn secondary notification-open-button" data-action-id="${item.actionId}" data-project-id="${item.projectId}">Open action</button>
+              <button class="btn primary notification-open-button" data-action-id="${item.actionId}" data-project-id="${item.projectId}">Open exact action</button>
               <button class="btn secondary notification-dismiss-button" data-key="${escapeHtml(item.key)}">Dismiss</button>
             </div>
           </article>`).join("")}</div>` : `<div class="empty-state">${icon("bell",42)}<h3>No active notifications</h3><p>You are up to date.</p></div>`}
@@ -2509,6 +2509,19 @@ function bindNotificationEvents() {
       { read_at: new Date().toISOString(), dismissed_at: null }
     ).catch(() => {});
     location.hash = "#actions";
+    route();
+    let attempts = 0;
+    const openExactAction = () => {
+      attempts += 1;
+      try {
+        if (typeof openActionDetails === "function") {
+          openActionDetails(actionId);
+          return;
+        }
+      } catch (error) {}
+      if (attempts < 12) setTimeout(openExactAction, 180);
+    };
+    setTimeout(openExactAction, 120);
   }));
   document.querySelector("#mark-all-notifications-read")?.addEventListener("click", async (event) => {
     const button = event.currentTarget;
