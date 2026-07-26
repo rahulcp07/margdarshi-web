@@ -117,7 +117,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); box-sh
 .global-search-result strong{font-size:12px;color:#0f172a}
 .global-search-result span{margin-top:3px;font-size:10px;color:#475569}
 .global-search-result small{font-size:9px;color:#64748b;text-align:right}
-.global-search-empty{padding:22px;text-align:center;color:#64748b;font-size:11px}
+.global-search-empty{padding:22px;text-align:center;color:#64748b;font-size:11px}.search-highlight{outline:3px solid #14b8a6!important;outline-offset:3px!important;background:#ecfdf5!important;transition:.2s}
 .global-search-section{padding:7px 14px;background:#f8fafc;color:#64748b;font-size:9px;text-transform:uppercase;letter-spacing:.06em;font-weight:700}
 @media(max-width:620px){.global-search-results{position:fixed;left:10px;right:10px;top:70px;max-height:60vh}}
 
@@ -1350,7 +1350,7 @@ function sidebar(active = "projects") {
   ];
   return `<aside class="sidebar">
     <nav>${items.map(([ic, key, label]) => `<button class="nav-item ${active === key ? "active" : ""}" data-nav="${key}">${icon(ic)}<span>${label}</span>${key === "admin" ? icon("arrow", 16) : ""}</button>`).join("")}</nav>
-    <div class="sidebar-footer"><div class="road-mark">NH</div><strong>National Highway Wing</strong><span>Building safer, better highways · Build R5</span></div>
+    <div class="sidebar-footer"><div class="road-mark">NH</div><strong>National Highway Wing</strong><span>Building safer, better highways · Build R5.1</span></div>
   </aside>`;
 }
 
@@ -3062,18 +3062,52 @@ function globalSearchItems(query){
   if(q.length<2)return[];
   const includes=(...values)=>values.some(v=>String(v||"").toLowerCase().includes(q));
   const projectResults=(state.projects||[]).filter(p=>includes(p.project_name,p.project_code,p.status,p.mode)).map(p=>({
-    type:"Project",title:p.project_name,detail:`${p.project_code||"No code"} · ${p.status||"—"}`,date:"",route:`#project/${p.id}`
+    type:"Project",title:p.project_name,detail:`${p.project_code||"No code"} · ${p.status||"—"}`,date:"",route:`#project/${p.id}`,recordId:p.id
   }));
   const correspondenceResults=(state.correspondence||[]).filter(c=>includes(c.subject,c.letter_number,c.from_party,c.to_party,c.status)).map(c=>({
-    type:"Correspondence",title:c.subject||"Untitled correspondence",detail:`${c.letter_number||"No letter number"} · ${reportProjectName(c.project_id)}`,date:formatDate(c.letter_date),route:"#correspondence"
+    type:"Correspondence",title:c.subject||"Untitled correspondence",detail:`${c.letter_number||"No letter number"} · ${reportProjectName(c.project_id)}`,date:formatDate(c.letter_date),route:"#correspondence",recordId:c.id
   }));
   const actionResults=(state.actionItems||[]).filter(a=>includes(a.title,a.description,a.priority,a.status)).map(a=>({
-    type:"Action",title:a.title,detail:`${reportProjectName(a.project_id)} · ${actionStatusLabel(a.status)}`,date:a.due_date?`Due ${formatDate(a.due_date)}`:"",route:"#actions"
+    type:"Action",title:a.title,detail:`${reportProjectName(a.project_id)} · ${actionStatusLabel(a.status)}`,date:a.due_date?`Due ${formatDate(a.due_date)}`:"",route:"#actions",recordId:a.id
   }));
   const inspectionResults=(state.inspections||[]).filter(i=>includes(i.inspection_type,i.observations,i.location_description,i.severity,i.status,chainageLabel(i))).map(i=>({
-    type:"Inspection",title:`${(i.inspection_type||"general").replaceAll("_"," ")} inspection`,detail:`${reportProjectName(i.project_id)} · ${chainageLabel(i)}`,date:formatDate(i.inspection_date),route:"#inspections"
+    type:"Inspection",title:`${(i.inspection_type||"general").replaceAll("_"," ")} inspection`,detail:`${reportProjectName(i.project_id)} · ${chainageLabel(i)}`,date:formatDate(i.inspection_date),route:"#inspections",recordId:i.id
   }));
   return [...projectResults,...correspondenceResults,...actionResults,...inspectionResults].slice(0,24);
+}
+
+
+function openExactSearchRecord(type,id){
+  if(!id)return;
+  const attempts=12;
+  let count=0;
+  const tryOpen=()=>{
+    count+=1;
+    try{
+      if(type==="Action"&&typeof openActionDetails==="function"){
+        openActionDetails(id);
+        return;
+      }
+      if(type==="Correspondence"){
+        const item=state.correspondence.find(record=>record.id===id);
+        const editButton=document.querySelector(`[data-edit-correspondence="${id}"], [data-correspondence-edit="${id}"], .edit-correspondence[data-id="${id}"]`);
+        if(editButton){editButton.click();return;}
+        const row=document.querySelector(`[data-correspondence-id="${id}"]`);
+        if(row){row.scrollIntoView({behavior:"smooth",block:"center"});row.classList.add("search-highlight");setTimeout(()=>row.classList.remove("search-highlight"),2200);return;}
+        if(item&&typeof openCorrespondenceModal==="function"){openCorrespondenceModal(item);return;}
+      }
+      if(type==="Inspection"){
+        const editButton=document.querySelector(`[data-edit-inspection="${id}"], [data-inspection-edit="${id}"], .edit-inspection[data-id="${id}"]`);
+        if(editButton){editButton.click();return;}
+        const row=document.querySelector(`[data-inspection-id="${id}"]`);
+        if(row){row.scrollIntoView({behavior:"smooth",block:"center"});row.classList.add("search-highlight");setTimeout(()=>row.classList.remove("search-highlight"),2200);return;}
+        const item=state.inspections.find(record=>record.id===id);
+        if(item&&typeof openInspectionModal==="function"){openInspectionModal(item);return;}
+      }
+    }catch(error){}
+    if(count<attempts)setTimeout(tryOpen,180);
+  };
+  setTimeout(tryOpen,120);
 }
 
 function renderGlobalSearchResults(items){
@@ -3089,14 +3123,17 @@ function renderGlobalSearchResults(items){
   box.innerHTML=groups.map(group=>{
     const rows=items.filter(item=>item.type===group);
     if(!rows.length)return"";
-    return`<div class="global-search-section">${group}</div>${rows.map(item=>`<button class="global-search-result" data-route="${item.route}"><div><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.detail)}</span></div><small>${escapeHtml(item.date||item.type)}</small></button>`).join("")}`;
+    return`<div class="global-search-section">${group}</div>${rows.map(item=>`<button class="global-search-result" data-route="${item.route}" data-record-type="${item.type}" data-record-id="${item.recordId||""}"><div><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.detail)}</span></div><small>${escapeHtml(item.date||item.type)}</small></button>`).join("")}`;
   }).join("");
   box.hidden=false;
   box.querySelectorAll(".global-search-result").forEach(button=>button.addEventListener("click",()=>{
+    const recordType=button.dataset.recordType;
+    const recordId=button.dataset.recordId;
     box.hidden=true;
     document.querySelector("#global-search-input").value="";
     location.hash=button.dataset.route;
     route();
+    if(recordType!=="Project") openExactSearchRecord(recordType,recordId);
   }));
 }
 
