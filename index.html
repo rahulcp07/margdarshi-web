@@ -157,6 +157,55 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); box-sh
   background:#f0fdfa!important;
 }
 
+
+/* Correct project workspace theme using actual workspace classes */
+.workspace-header{
+  background:linear-gradient(135deg,#0f766e 0%,#0f5f63 48%,#164e63 100%)!important;
+  border-bottom:1px solid rgba(255,255,255,.16)!important;
+}
+.workspace-meta{
+  color:#bff3ea!important;
+}
+.workspace-title-row p{
+  color:rgba(255,255,255,.82)!important;
+}
+.workspace-stat-grid>div{
+  background:rgba(255,255,255,.11)!important;
+  border-color:rgba(255,255,255,.20)!important;
+  box-shadow:none!important;
+}
+.workspace-stat-grid>div>span,
+.workspace-stat-grid>div>small{
+  color:rgba(255,255,255,.78)!important;
+}
+.workspace-stat-grid .progress-track{
+  background:rgba(255,255,255,.26)!important;
+}
+.workspace-stat-grid .progress-track span{
+  background:#a7f3d0!important;
+}
+.workspace-header .status-badge{
+  background:#ecfeff!important;
+  color:#155e75!important;
+  border-color:#a5f3fc!important;
+}
+.tabs{
+  background:#f8fafc!important;
+  border-bottom-color:#cbd5e1!important;
+}
+.tab{
+  color:#475569!important;
+}
+.tab.active{
+  color:#0f766e!important;
+  border-bottom-color:#0f766e!important;
+  background:#ecfdf5!important;
+}
+.tab:hover{
+  color:#0f766e!important;
+  background:#f0fdfa!important;
+}
+
 .project-documents{display:grid;gap:12px}.project-document-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center;padding:13px;border:1px solid var(--border);border-radius:10px;background:#fff}.project-document-row strong,.project-document-row span,.project-document-row small{display:block}.project-document-row span,.project-document-row small{margin-top:4px;color:var(--muted);font-size:10px}.document-actions{display:flex;gap:8px;flex-wrap:wrap}.timeline-list{position:relative;display:grid;gap:0;padding-left:18px}.timeline-list:before{content:"";position:absolute;left:5px;top:8px;bottom:8px;width:2px;background:#dbe4ee}.timeline-item{position:relative;padding:0 0 18px 18px}.timeline-item:last-child{padding-bottom:0}.timeline-item:before{content:"";position:absolute;left:-18px;top:6px;width:10px;height:10px;border-radius:50%;background:#0f5a91;border:2px solid #fff;box-shadow:0 0 0 2px #bfd3e5}.timeline-item strong,.timeline-item span,.timeline-item small{display:block}.timeline-item span{margin-top:4px;color:#475569;font-size:10px}.timeline-item small{margin-top:4px;color:var(--muted);font-size:9px}.module-header{display:flex;justify-content:space-between;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:14px}.module-header h2{margin:0}.module-header p{margin:5px 0 0;color:var(--muted);font-size:11px}
 .quick-link{padding:13px;border:1px solid var(--border);border-radius:9px;background:#f8fafc;text-align:left;cursor:pointer}.quick-link strong,.quick-link span{display:block}.quick-link span{margin-top:4px;color:var(--muted);font-size:9px}@media(max-width:1050px){.dashboard-kpis{grid-template-columns:repeat(2,1fr)}.dashboard-grid{grid-template-columns:1fr}}@media(max-width:620px){.dashboard-kpis,.quick-links{grid-template-columns:1fr}}
 .reports-page{display:grid;gap:22px}.report-toolbar{display:flex;justify-content:space-between;gap:14px;align-items:center;flex-wrap:wrap}.report-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.report-controls select{width:auto;min-width:190px}.report-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.report-card{padding:18px;border:1px solid var(--border);border-radius:12px;background:#fff}.report-card h2{margin:0 0 6px;font-size:18px}.report-table-wrap{overflow-x:auto;margin-top:14px}.report-table{width:100%;border-collapse:collapse;font-size:11px}.report-table th,.report-table td{padding:9px 10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}.report-table th{color:#64748b;font-size:9px;text-transform:uppercase;letter-spacing:.05em;background:#f8fafc}.report-kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(130px,1fr));gap:12px;margin-top:14px}.report-kpi{padding:14px;border:1px solid var(--border);border-radius:10px;background:#f8fafc}.report-kpi span,.report-kpi strong{display:block}.report-kpi span{color:var(--muted);font-size:10px}.report-kpi strong{margin-top:5px;font-size:23px}.report-section-title{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}.report-section-title h3{margin:0;font-size:15px}.report-status-list{display:grid;gap:8px;margin-top:12px}.report-status-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 11px;border:1px solid var(--border);border-radius:8px;background:#fff}.report-status-row strong,.report-status-row span{display:block}.report-status-row span{margin-top:3px;color:var(--muted);font-size:10px}@media(max-width:980px){.report-grid{grid-template-columns:1fr}.report-kpi-grid{grid-template-columns:repeat(2,1fr)}}@media print{
@@ -1287,7 +1336,7 @@ function sidebar(active = "projects") {
   ];
   return `<aside class="sidebar">
     <nav>${items.map(([ic, key, label]) => `<button class="nav-item ${active === key ? "active" : ""}" data-nav="${key}">${icon(ic)}<span>${label}</span>${key === "admin" ? icon("arrow", 16) : ""}</button>`).join("")}</nav>
-    <div class="sidebar-footer"><div class="road-mark">NH</div><strong>National Highway Wing</strong><span>Building safer, better highways · Build R4.1</span></div>
+    <div class="sidebar-footer"><div class="road-mark">NH</div><strong>National Highway Wing</strong><span>Building safer, better highways · Build R4.2</span></div>
   </aside>`;
 }
 
