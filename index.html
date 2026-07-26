@@ -1219,7 +1219,7 @@ function sidebar(active = "projects") {
   ];
   return `<aside class="sidebar">
     <nav>${items.map(([ic, key, label]) => `<button class="nav-item ${active === key ? "active" : ""}" data-nav="${key}">${icon(ic)}<span>${label}</span>${key === "admin" ? icon("arrow", 16) : ""}</button>`).join("")}</nav>
-    <div class="sidebar-footer"><div class="road-mark">NH</div><strong>National Highway Wing</strong><span>Building safer, better highways</span></div>
+    <div class="sidebar-footer"><div class="road-mark">NH</div><strong>National Highway Wing</strong><span>Building safer, better highways · Build R1</span></div>
   </aside>`;
 }
 
@@ -2847,17 +2847,34 @@ function bindCommonEvents() {
     location.hash = "";
     await init();
   });
-  document.querySelectorAll("[data-nav='projects']").forEach((button) => button.addEventListener("click", () => { location.hash = "#projects"; }));
-  document.querySelectorAll("[data-nav='admin']").forEach((button) => button.addEventListener("click", () => {
-    if (state.profile?.role !== "admin") return showToast("Administrator access is required.", "error");
-    location.hash = "#admin";
-  }));
-  document.querySelectorAll("[data-nav='correspondence']").forEach((button) => button.addEventListener("click", () => { location.hash = "#correspondence"; }));
-  document.querySelectorAll("[data-nav='actions']").forEach((button) => button.addEventListener("click", () => { location.hash = "#actions"; }));
-  document.querySelectorAll("[data-nav='calendar']").forEach((button) => button.addEventListener("click", () => { location.hash = "#calendar"; }));
-  document.querySelectorAll("[data-nav='inspections']").forEach((button) => button.addEventListener("click", () => { location.hash = "#inspections"; }));
-  document.querySelectorAll("[data-nav='reports']").forEach((button) => button.addEventListener("click", () => { location.hash = "#reports"; }));
-  document.querySelectorAll(".nav-item:not([data-nav='projects']):not([data-nav='admin']):not([data-nav='correspondence']):not([data-nav='actions']):not([data-nav='calendar']):not([data-nav='inspections']):not([data-nav='reports'])").forEach((button) => button.addEventListener("click", () => showToast(`${button.textContent.trim()} will be activated in the next module.`, "info")));
+  const activeRoutes = {
+    projects: "#projects",
+    correspondence: "#correspondence",
+    actions: "#actions",
+    inspections: "#inspections",
+    calendar: "#calendar",
+    reports: "#reports",
+  };
+
+  document.querySelectorAll(".nav-item").forEach((button) => {
+    button.addEventListener("click", () => {
+      const nav = button.dataset.nav;
+      if (nav === "admin") {
+        if (state.profile?.role !== "admin") {
+          showToast("Administrator access is required.", "error");
+          return;
+        }
+        location.hash = "#admin";
+        return;
+      }
+      if (activeRoutes[nav]) {
+        location.hash = activeRoutes[nav];
+        route();
+        return;
+      }
+      showToast(`${button.textContent.trim()} will be activated in the next module.`, "info");
+    });
+  });
 }
 
 function bindRegisterEvents() {
