@@ -122,6 +122,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); box-sh
 @media(max-width:620px){.global-search-results{position:fixed;left:10px;right:10px;top:70px;max-height:60vh}}
 
 .topbar-actions { justify-self: end; display: flex; align-items: center; gap: 18px; }
+.app-build-marker { flex: 0 0 auto; display: inline-flex; align-items: center; min-height: 26px; padding: 4px 9px; border: 1px solid rgba(255,255,255,.28); border-radius: 999px; color: #fff; background: rgba(255,255,255,.12); font-size: 10px; font-weight: 700; letter-spacing: .03em; white-space: nowrap; user-select: none; pointer-events: none; }
 .notification-button { position: relative; display: grid; place-items: center; border: 0; background: transparent; color: #fff; }
 .notification-button span { position: absolute; top: -9px; right: -8px; min-width: 19px; height: 19px; display: grid; place-items: center; border: 2px solid #0b5188; border-radius: 999px; background: #ef4444; font-size: 10px; font-weight: 700; }
 .notification-button .notification-zero { display: none; }
@@ -353,7 +354,7 @@ h1, h2, h3, p { overflow-wrap: anywhere; }
 }
 @media (max-width: 900px) {
   .auth-page { grid-template-columns: 1fr; }.auth-brand-panel { display: none; }.auth-form-panel { min-height: 100vh; }.mobile-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; color: var(--primary); }.mobile-brand .emblem { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 8px; color: #fff; background: var(--primary); font-size: 10px; }
-  .app-shell { grid-template-columns: 78px 1fr; grid-template-rows: 82px 1fr; }.topbar { grid-template-columns: 60px 1fr auto; height: 82px; padding: 0 16px; }.topbar .brand-lockup > div:last-child { display: none; }.topbar .brand-lockup { min-width: auto; }.topbar .emblem { width: 42px; height: 42px; }.global-search kbd { display: none; }.sidebar { top: 82px; height: calc(100vh - 82px); padding-inline: 8px; }.nav-item { justify-content: center; padding: 0; }.nav-item span, .nav-item svg:last-child, .sidebar-footer strong, .sidebar-footer span { display: none; }.nav-item.active::before { left: -8px; }.sidebar-footer { padding: 10px; }.sidebar-footer .road-mark { width: 34px; height: 34px; margin: auto; }.main-content { padding: 22px 18px; }.filter-card { grid-template-columns: 1fr 1fr; }.search-input { grid-column: 1 / -1; min-height: 43px; }.btn.reset { width: 100%; }.workspace-stat-grid { grid-template-columns: 1fr 1fr; }.overview-layout { grid-template-columns: 1fr; }
+  .app-shell { grid-template-columns: 78px 1fr; grid-template-rows: 82px 1fr; }.topbar { grid-template-columns: 60px 1fr auto; height: 82px; padding: 0 16px; }.topbar .brand-lockup > div:last-child { display: none; }.topbar .brand-lockup { min-width: auto; }.topbar .emblem { width: 42px; height: 42px; }.global-search kbd { display: none; }.topbar-actions { gap: 10px; }.app-build-marker { padding-inline: 7px; font-size: 9px; }.sidebar { top: 82px; height: calc(100vh - 82px); padding-inline: 8px; }.nav-item { justify-content: center; padding: 0; }.nav-item span, .nav-item svg:last-child, .sidebar-footer strong, .sidebar-footer span { display: none; }.nav-item.active::before { left: -8px; }.sidebar-footer { padding: 10px; }.sidebar-footer .road-mark { width: 34px; height: 34px; margin: auto; }.main-content { padding: 22px 18px; }.filter-card { grid-template-columns: 1fr 1fr; }.search-input { grid-column: 1 / -1; min-height: 43px; }.btn.reset { width: 100%; }.workspace-stat-grid { grid-template-columns: 1fr 1fr; }.overview-layout { grid-template-columns: 1fr; }
 }
 
 
@@ -524,7 +525,7 @@ h1, h2, h3, p { overflow-wrap: anywhere; }
 @media (max-width: 640px) { .admin-heading { flex-direction: column; }.admin-metrics { grid-template-columns: 1fr 1fr; } }
 
 @media (max-width: 640px) {
-  .auth-form-panel { padding: 18px; }.auth-card { padding: 25px; }.app-shell { grid-template-columns: 1fr; grid-template-rows: 72px 1fr; }.topbar { grid-template-columns: auto 1fr auto; height: 72px; }.global-search { height: 44px; }.global-search input { min-width: 0; }.notification-button, .user-menu { display: none; }.sidebar { position: fixed; z-index: 30; left: 0; right: 0; bottom: 0; top: auto; width: 100%; height: 66px; flex-direction: row; padding: 6px 8px; border-right: 0; border-top: 1px solid var(--border); }.sidebar nav { width: 100%; grid-template-columns: repeat(5, 1fr); gap: 3px; }.nav-item { min-height: 52px; }.nav-item:nth-child(6) { display: none; }.nav-item.active::before { left: 20%; right: 20%; top: -6px; bottom: auto; width: auto; height: 3px; }.sidebar-footer { display: none; }.main-content { padding: 18px 12px 82px; }.page-heading { align-items: stretch; flex-direction: column; }.page-heading .btn { align-self: flex-start; }.page-heading h1 { font-size: 29px; }.filter-card { grid-template-columns: 1fr; }.search-input { grid-column: auto; }.filter-card .select-field:nth-of-type(3) { display: grid; }.insights-column { grid-template-columns: 1fr; }.data-table th:nth-child(2), .data-table td:nth-child(2), .data-table th:nth-child(3), .data-table td:nth-child(3), .data-table th:nth-child(6), .data-table td:nth-child(6) { display: none; }.workspace-header { padding: 20px 16px 22px; }.workspace-title-row { flex-direction: column; }.workspace-title-row h1 { font-size: 26px; }.workspace-stat-grid { grid-template-columns: 1fr; }.workspace-body { padding: 0 14px 82px; }.tabs { margin-inline: -14px; padding-inline: 14px; }.detail-list { grid-template-columns: 1fr; }.form-grid { grid-template-columns: 1fr; }.form-grid .wide { grid-column: auto; }.modal-card { padding: 20px; }
+  .auth-form-panel { padding: 18px; }.auth-card { padding: 25px; }.app-shell { grid-template-columns: 1fr; grid-template-rows: 72px 1fr; }.topbar { grid-template-columns: auto 1fr auto; height: 72px; }.global-search { height: 44px; }.global-search input { min-width: 0; }.topbar-actions { gap: 6px; }.app-build-marker { min-height: 24px; padding-inline: 6px; }.notification-button, .user-menu { display: none; }.sidebar { position: fixed; z-index: 30; left: 0; right: 0; bottom: 0; top: auto; width: 100%; height: 66px; flex-direction: row; padding: 6px 8px; border-right: 0; border-top: 1px solid var(--border); }.sidebar nav { width: 100%; grid-template-columns: repeat(5, 1fr); gap: 3px; }.nav-item { min-height: 52px; }.nav-item:nth-child(6) { display: none; }.nav-item.active::before { left: 20%; right: 20%; top: -6px; bottom: auto; width: auto; height: 3px; }.sidebar-footer { display: none; }.main-content { padding: 18px 12px 82px; }.page-heading { align-items: stretch; flex-direction: column; }.page-heading .btn { align-self: flex-start; }.page-heading h1 { font-size: 29px; }.filter-card { grid-template-columns: 1fr; }.search-input { grid-column: auto; }.filter-card .select-field:nth-of-type(3) { display: grid; }.insights-column { grid-template-columns: 1fr; }.data-table th:nth-child(2), .data-table td:nth-child(2), .data-table th:nth-child(3), .data-table td:nth-child(3), .data-table th:nth-child(6), .data-table td:nth-child(6) { display: none; }.workspace-header { padding: 20px 16px 22px; }.workspace-title-row { flex-direction: column; }.workspace-title-row h1 { font-size: 26px; }.workspace-stat-grid { grid-template-columns: 1fr; }.workspace-body { padding: 0 14px 82px; }.tabs { margin-inline: -14px; padding-inline: 14px; }.detail-list { grid-template-columns: 1fr; }.form-grid { grid-template-columns: 1fr; }.form-grid .wide { grid-column: auto; }.modal-card { padding: 20px; }
 }
 
 </style>
@@ -537,6 +538,7 @@ const CONFIG = Object.freeze({
   supabasePublishableKey: "sb_publishable_hYB33w3ZowZunNnnJv3OkQ_GbKe2OhE",
   appName: "MARGDARSHI",
   officeName: "National Highway Division, Dhule",
+  buildLabel: "R5.6",
 });
 
 const paths = {
@@ -1380,7 +1382,7 @@ function sidebar(active = "projects") {
   ];
   return `<aside class="sidebar">
     <nav>${items.map(([ic, key, label]) => `<button class="nav-item ${active === key ? "active" : ""}" data-nav="${key}">${icon(ic)}<span>${label}</span>${key === "admin" ? icon("arrow", 16) : ""}</button>`).join("")}</nav>
-    <div class="sidebar-footer"><div class="road-mark">NH</div><strong>National Highway Wing</strong><span>Building safer, better highways · Build R5.6</span></div>
+    <div class="sidebar-footer"><div class="road-mark">NH</div><strong>National Highway Wing</strong><span>Building safer, better highways · Build ${CONFIG.buildLabel}</span></div>
   </aside>`;
 }
 
@@ -1391,7 +1393,7 @@ function appHeader() {
   return `<header class="topbar">
     <div class="brand-lockup"><div class="emblem">NH</div><div><strong>MARGDARSHI</strong><span>National Highway Division Dhule</span></div></div>
     <div class="global-search">${icon("search", 19)}<input id="global-search-input" aria-label="Global search" autocomplete="off" placeholder="Search projects, letters, actions, inspections..." /><kbd>Ctrl K</kbd><div id="global-search-results" class="global-search-results" hidden></div></div>
-    <div class="topbar-actions"><button class="notification-button" id="notification-button" aria-label="Notifications">${icon("bell")}<span class="${unreadNotificationCount() ? "" : "notification-zero"}">${unreadNotificationCount()}</span></button><div class="user-menu"><div class="avatar">${initials}</div><div><strong>${name}</strong><span>${designation}</span></div></div><button class="icon-button" id="logout-button" title="Sign out">${icon("logout")}</button></div>
+    <div class="topbar-actions"><span class="app-build-marker" aria-label="Current application build ${CONFIG.buildLabel}">Build ${CONFIG.buildLabel}</span><button class="notification-button" id="notification-button" aria-label="Notifications">${icon("bell")}<span class="${unreadNotificationCount() ? "" : "notification-zero"}">${unreadNotificationCount()}</span></button><div class="user-menu"><div class="avatar">${initials}</div><div><strong>${name}</strong><span>${designation}</span></div></div><button class="icon-button" id="logout-button" title="Sign out">${icon("logout")}</button></div>
   </header>`;
 }
 
