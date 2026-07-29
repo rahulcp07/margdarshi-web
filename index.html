@@ -448,8 +448,38 @@ h1, h2, h3, p { overflow-wrap: anywhere; }
 .progress-track { height: 7px; margin-top: 10px; border-radius: 999px; background: #e2e8f0; overflow: hidden; }
 .progress-track > span { display: block; height: 100%; background: var(--primary); border-radius: inherit; }
 .action-summary-grid { display: grid; grid-template-columns: repeat(4,minmax(150px,1fr)); gap: 14px; }
+.action-detail-page { display: grid; gap: 22px; }
+.action-detail-header { padding: 24px; border-radius: 13px; color: #fff; background: linear-gradient(120deg,#0f477d,#17648c); }
+.action-detail-header .back-link { margin-bottom: 20px; }
+.action-detail-header .action-topline { margin-bottom: 12px; }
+.action-detail-header .action-status, .action-detail-header .priority-pill, .action-detail-header .workflow-stage, .action-detail-header .workflow-direction { border: 1px solid rgba(255,255,255,.2); }
+.action-detail-title-row { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; }
+.action-detail-title-row h1 { margin: 0; font-size: 31px; letter-spacing: -.03em; }
+.action-detail-title-row p { max-width: 780px; margin: 9px 0 0; color: rgba(255,255,255,.76); font-size: 13px; line-height: 1.55; }
+.action-detail-actions { display: flex; justify-content: flex-end; gap: 9px; flex-wrap: wrap; }
+.action-detail-actions .btn { white-space: nowrap; }
+.action-detail-stats { display: grid; grid-template-columns: repeat(4,minmax(140px,1fr)); gap: 12px; }
+.action-detail-stat, .action-detail-panel { border: 1px solid var(--border); border-radius: 11px; background: #fff; }
+.action-detail-stat { padding: 15px; }
+.action-detail-stat span, .action-detail-stat strong, .action-detail-stat small { display: block; }
+.action-detail-stat span { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+.action-detail-stat strong { margin-top: 7px; font-size: 18px; }
+.action-detail-stat small { margin-top: 5px; color: var(--muted); font-size: 10px; }
+.action-detail-grid { display: grid; grid-template-columns: minmax(0,1.15fr) minmax(300px,.85fr); gap: 16px; }
+.action-detail-panel { padding: 20px; }
+.action-detail-panel h2 { margin: 0 0 14px; font-size: 17px; }
+.action-detail-panel h3 { margin: 17px 0 8px; font-size: 13px; }
+.action-detail-copy { margin: 0; color: #475569; font-size: 12px; line-height: 1.65; white-space: pre-wrap; }
+.action-detail-list { display: grid; gap: 9px; }
+.action-detail-list > div { padding: 11px 12px; border: 1px solid var(--border); border-radius: 9px; background: #f8fafc; }
+.action-detail-list strong, .action-detail-list span, .action-detail-list small { display: block; }
+.action-detail-list span, .action-detail-list small { margin-top: 4px; color: var(--muted); font-size: 10px; }
+.action-detail-empty { padding: 42px 24px; text-align: center; }
+.action-detail-empty h1 { margin: 15px 0 7px; }
+.action-detail-empty p { margin: 0 0 18px; color: var(--muted); }
 @media (max-width:900px){.action-summary-grid{grid-template-columns:repeat(2,1fr)}}
-@media (max-width:720px){.action-item{grid-template-columns:1fr}.action-side{text-align:left;min-width:0}}
+@media (max-width:900px){.action-detail-grid{grid-template-columns:1fr}.action-detail-stats{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:720px){.action-item{grid-template-columns:1fr}.action-side{text-align:left;min-width:0}.action-detail-title-row{flex-direction:column}.action-detail-actions{justify-content:flex-start}.action-detail-stats{grid-template-columns:1fr}}
 
 .file-selected { color: var(--primary); font-weight: 600; }
 
@@ -1350,7 +1380,7 @@ function sidebar(active = "projects") {
   ];
   return `<aside class="sidebar">
     <nav>${items.map(([ic, key, label]) => `<button class="nav-item ${active === key ? "active" : ""}" data-nav="${key}">${icon(ic)}<span>${label}</span>${key === "admin" ? icon("arrow", 16) : ""}</button>`).join("")}</nav>
-    <div class="sidebar-footer"><div class="road-mark">NH</div><strong>National Highway Wing</strong><span>Building safer, better highways · Build R5.5</span></div>
+    <div class="sidebar-footer"><div class="road-mark">NH</div><strong>National Highway Wing</strong><span>Building safer, better highways · Build R5.6</span></div>
   </aside>`;
 }
 
@@ -2098,6 +2128,10 @@ function openExactDashboardCalendarRecord(recordId,parentRoute){
 }
 
 function navigateToDashboardRecord(recordType,recordId,parentRoute){
+  if(recordType==="Action"){
+    openActionDetails(recordId);
+    return;
+  }
   if(recordType==="Calendar"){
     const event=state.calendarEvents.find((item)=>String(item.id)===String(recordId));
     if(event?.event_date) state.calendarViewDate=new Date(`${event.event_date}T00:00:00`);
@@ -2209,7 +2243,7 @@ function bindInspectionEvents(onSaved){bindCommonEvents();const dialog=document.
     }
   };
   responsible?.addEventListener("change",syncResponsibleOther);
-  syncResponsibleOther();document.querySelectorAll(".edit-inspection-button").forEach((button)=>button.addEventListener("click",()=>{const item=state.inspections.find((i)=>i.id===button.dataset.id);if(item){populateInspectionForm(item);dialog.showModal();}}));document.querySelectorAll(".open-inspection-photo").forEach((button)=>button.addEventListener("click",async()=>{const photo=state.inspectionPhotos.find((p)=>p.id===button.dataset.photoId);try{await openInspectionPhoto(photo);}catch(error){showToast(error.message,"error");}}));document.querySelectorAll(".open-inspection-action").forEach((button)=>button.addEventListener("click",()=>location.hash="#actions"));document.querySelector("#inspection-form")?.addEventListener("submit",async(event)=>{event.preventDefault();const form=event.currentTarget;if(!form.checkValidity()){form.reportValidity();return;}const id=document.querySelector("#inspection-id").value;const r=document.querySelector("#inspection-responsible").value;const payload={project_id:document.querySelector("#inspection-project").value,inspection_date:document.querySelector("#inspection-date").value,inspection_type:document.querySelector("#inspection-type").value,severity:document.querySelector("#inspection-severity").value,start_chainage_km:document.querySelector("#inspection-start-chainage").value||null,end_chainage_km:document.querySelector("#inspection-end-chainage").value||null,location_description:document.querySelector("#inspection-location").value.trim()||null,responsible_entity:r==="__other__"?document.querySelector("#inspection-responsible-other").value.trim()||null:r||null,observations:document.querySelector("#inspection-observations").value.trim(),required_compliance:document.querySelector("#inspection-compliance").value.trim()||null,compliance_due_date:document.querySelector("#inspection-due-date").value||null,status:document.querySelector("#inspection-status").value,linked_action_id:document.querySelector("#inspection-action").value||null};const button=document.querySelector("#inspection-save-button");const error=document.querySelector("#inspection-error");setButtonLoading(button,true,"Saving...");error.textContent="";try{const inspection=id?await updateInspection(id,payload):await createInspection(payload);const files=[...(document.querySelector("#inspection-photos")?.files||[])];for(const file of files){const uploaded=await uploadInspectionPhoto(file,inspection.project_id,inspection.id);await createInspectionPhoto({inspection_id:inspection.id,...uploaded,caption:file.name});}dialog.close();showToast(id?"Inspection updated.":"Inspection saved.");await onSaved();}catch(err){error.textContent=err.message;}finally{setButtonLoading(button,false);}});}
+  syncResponsibleOther();document.querySelectorAll(".edit-inspection-button").forEach((button)=>button.addEventListener("click",()=>{const item=state.inspections.find((i)=>i.id===button.dataset.id);if(item){populateInspectionForm(item);dialog.showModal();}}));document.querySelectorAll(".open-inspection-photo").forEach((button)=>button.addEventListener("click",async()=>{const photo=state.inspectionPhotos.find((p)=>p.id===button.dataset.photoId);try{await openInspectionPhoto(photo);}catch(error){showToast(error.message,"error");}}));document.querySelectorAll(".open-inspection-action").forEach((button)=>button.addEventListener("click",()=>{const inspectionId=button.closest("[data-inspection-id]")?.dataset.inspectionId;const actionId=state.inspections.find((item)=>String(item.id)===String(inspectionId))?.linked_action_id;if(actionId)openActionDetails(actionId);else location.hash="#actions";}));document.querySelector("#inspection-form")?.addEventListener("submit",async(event)=>{event.preventDefault();const form=event.currentTarget;if(!form.checkValidity()){form.reportValidity();return;}const id=document.querySelector("#inspection-id").value;const r=document.querySelector("#inspection-responsible").value;const payload={project_id:document.querySelector("#inspection-project").value,inspection_date:document.querySelector("#inspection-date").value,inspection_type:document.querySelector("#inspection-type").value,severity:document.querySelector("#inspection-severity").value,start_chainage_km:document.querySelector("#inspection-start-chainage").value||null,end_chainage_km:document.querySelector("#inspection-end-chainage").value||null,location_description:document.querySelector("#inspection-location").value.trim()||null,responsible_entity:r==="__other__"?document.querySelector("#inspection-responsible-other").value.trim()||null:r||null,observations:document.querySelector("#inspection-observations").value.trim(),required_compliance:document.querySelector("#inspection-compliance").value.trim()||null,compliance_due_date:document.querySelector("#inspection-due-date").value||null,status:document.querySelector("#inspection-status").value,linked_action_id:document.querySelector("#inspection-action").value||null};const button=document.querySelector("#inspection-save-button");const error=document.querySelector("#inspection-error");setButtonLoading(button,true,"Saving...");error.textContent="";try{const inspection=id?await updateInspection(id,payload):await createInspection(payload);const files=[...(document.querySelector("#inspection-photos")?.files||[])];for(const file of files){const uploaded=await uploadInspectionPhoto(file,inspection.project_id,inspection.id);await createInspectionPhoto({inspection_id:inspection.id,...uploaded,caption:file.name});}dialog.close();showToast(id?"Inspection updated.":"Inspection saved.");await onSaved();}catch(err){error.textContent=err.message;}finally{setButtonLoading(button,false);}});}
 function isoDateLocal(date) {
   const copy = new Date(date);
   const year = copy.getFullYear();
@@ -2408,20 +2442,7 @@ function populateCalendarForm(event = null) {
 
 
 function openExactCalendarAction(actionId){
-  location.hash="#actions";
-  route();
-  let attempts=0;
-  const openAction=()=>{
-    attempts+=1;
-    try{
-      if(typeof openActionDetails==="function"){
-        openActionDetails(actionId);
-        return;
-      }
-    }catch(error){}
-    if(attempts<12)setTimeout(openAction,180);
-  };
-  setTimeout(openAction,120);
+  openActionDetails(actionId);
 }
 
 function openCalendarItem(item,dialog){
@@ -2650,20 +2671,7 @@ function bindNotificationEvents() {
       state.notifications.find((item) => item.actionId === actionId)?.key || `opened:${actionId}`,
       { read_at: new Date().toISOString(), dismissed_at: null }
     ).catch(() => {});
-    location.hash = "#actions";
-    route();
-    let attempts = 0;
-    const openExactAction = () => {
-      attempts += 1;
-      try {
-        if (typeof openActionDetails === "function") {
-          openActionDetails(actionId);
-          return;
-        }
-      } catch (error) {}
-      if (attempts < 12) setTimeout(openExactAction, 180);
-    };
-    setTimeout(openExactAction, 120);
+    openActionDetails(actionId);
   }));
   document.querySelector("#mark-all-notifications-read")?.addEventListener("click", async (event) => {
     const button = event.currentTarget;
@@ -2808,6 +2816,7 @@ function actionList(items, showProject = true) {
           return `<strong>Claimed: ${latestClaimed}% | Verified: ${Number(item.verified_progress_percent || 0)}%</strong>`;
         })()}
         <span>Only verified progress is treated as official.</span>
+        <button class="btn secondary view-action-details" type="button" data-action-id="${item.id}" aria-label="View details for ${escapeHtml(item.title)}">View details</button>
         ${canControlAction(item) ? `<button class="btn secondary edit-action-button" data-action-id="${item.id}">Edit instruction</button>` : ""}
         ${canSubmitProgress(item) ? `<button class="btn primary submit-progress-button" data-action-id="${item.id}">Submit progress</button>` : ""}
         ${canProcessOfficeAction(item) ? `<button class="btn secondary process-office-action-button" data-action-id="${item.id}">Process / Forward</button>` : ""}
@@ -2908,6 +2917,127 @@ function actionPageTemplate() {
   </main></div>`;
 }
 
+function openActionDetails(actionId) {
+  const id = String(actionId || "").trim();
+  if (!id) {
+    location.hash = "#actions";
+    return;
+  }
+  const target = `#action/${encodeURIComponent(id)}`;
+  if (location.hash === target) {
+    renderActionDetail(id);
+    return;
+  }
+  location.hash = target;
+}
+
+function actionDetailNotFoundTemplate() {
+  return `<div class="app-shell">${appHeader()}${sidebar("actions")}<main class="main-content action-detail-page">
+    <div class="breadcrumb"><span>Dashboard</span><b>/</b><span>Action Tracking</span><b>/</b>Action not found</div>
+    <section class="admin-card action-detail-empty">
+      ${icon("clipboard",48)}
+      <h1>Action not found</h1>
+      <p>The requested action is unavailable, no longer exists, or is outside your current access.</p>
+      <button class="btn primary" id="action-not-found-back" type="button">Return to Action Tracking</button>
+    </section>
+  </main></div>`;
+}
+
+function actionDetailTemplate(item) {
+  const project = state.projects.find((record) => record.id === item.project_id);
+  const correspondence = state.correspondence.find((record) => record.id === item.correspondence_id);
+  const assignees = actionAssigneesFor(item.id);
+  const updates = actionUpdatesFor(item.id);
+  const latestUpdate = updates[0] || null;
+  const claimedProgress = latestUpdate ? Number(latestUpdate.claimed_progress_percent || 0) : Number(item.progress_percent || item.verified_progress_percent || 0);
+  const verifiedProgress = Number(item.verified_progress_percent || 0);
+  const projectLabel = project?.project_code || project?.project_name || "Project unavailable";
+  const canEdit = canControlAction(item);
+  const canSubmit = canSubmitProgress(item);
+  const canProcess = canProcessOfficeAction(item);
+  return `<div class="app-shell">${appHeader()}${sidebar("actions")}<main class="main-content action-detail-page">
+    <div class="breadcrumb"><span>Dashboard</span><b>/</b><span>Action Tracking</span><b>/</b>${escapeHtml(item.title)}</div>
+    <section class="action-detail-header">
+      <button class="back-link" id="action-detail-back" type="button">${icon("back",16)}Back to Action Tracking</button>
+      <div class="action-topline">
+        <span class="priority-pill ${item.priority || "normal"}">${escapeHtml(item.priority || "normal")}</span>
+        <span class="action-status ${item.status || "open"}">${escapeHtml(actionStatusLabel(item.status))}</span>
+        <span class="workflow-stage">${escapeHtml(workflowStageLabel(item.workflow_stage))}</span>
+        <span class="workflow-direction ${item.movement_direction || "internal"}">${escapeHtml(item.movement_direction || "internal")}</span>
+      </div>
+      <div class="action-detail-title-row">
+        <div><h1>${escapeHtml(item.title)}</h1><p>${escapeHtml(item.description || "No detailed instruction has been recorded.")}</p></div>
+        <div class="action-detail-actions">
+          ${canEdit ? `<button class="btn secondary edit-action-button" type="button" data-action-id="${item.id}">Edit instruction</button>` : ""}
+          ${canSubmit ? `<button class="btn primary submit-progress-button" type="button" data-action-id="${item.id}">Submit progress</button>` : ""}
+          ${canProcess ? `<button class="btn secondary process-office-action-button" type="button" data-action-id="${item.id}">Process / Forward</button>` : ""}
+        </div>
+      </div>
+    </section>
+    <section class="action-detail-stats">
+      <div class="action-detail-stat"><span>Project</span><strong>${escapeHtml(projectLabel)}</strong><small>${escapeHtml(project?.project_name || "Project record unavailable")}</small></div>
+      <div class="action-detail-stat"><span>Due date</span><strong>${item.due_date ? formatDate(item.due_date) : "Not set"}</strong><small>${item.reminder_date ? `Reminder ${formatDate(item.reminder_date)}` : "No reminder date"}</small></div>
+      <div class="action-detail-stat"><span>Claimed progress</span><strong>${claimedProgress}%</strong><small>${updates.length} submitted update${updates.length === 1 ? "" : "s"}</small></div>
+      <div class="action-detail-stat"><span>Verified progress</span><strong>${verifiedProgress}%</strong><small>Only verified progress is official</small></div>
+    </section>
+    <div class="action-detail-grid">
+      <section class="action-detail-panel">
+        <h2>Instruction and processing</h2>
+        <h3>Detailed instruction</h3>
+        <p class="action-detail-copy">${escapeHtml(item.description || "No detailed instruction recorded.")}</p>
+        <h3>Issuer note</h3>
+        <p class="action-detail-copy">${escapeHtml(item.issuer_note || "No issuer note recorded.")}</p>
+        <h3>Office processing note</h3>
+        <p class="action-detail-copy">${escapeHtml(item.office_processing_note || "No office processing note recorded.")}</p>
+        ${item.completion_note ? `<h3>Completion note</h3><p class="action-detail-copy">${escapeHtml(item.completion_note)}</p>` : ""}
+      </section>
+      <aside class="action-detail-panel">
+        <h2>Responsibility and context</h2>
+        <div class="action-detail-list">
+          ${assignees.length ? assignees.map((assignment) => `<div><strong>${escapeHtml(actionUserName(assignment.user_id))}</strong><span>${assignment.responsibility_type === "lead" ? "Lead officer" : "Supporting officer"}</span>${assignment.responsibility_note ? `<small>${escapeHtml(assignment.responsibility_note)}</small>` : ""}</div>`).join("") : `<div><strong>Unassigned</strong><span>No active assignee is recorded.</span></div>`}
+          <div><strong>${escapeHtml(officeActionTypeLabel(item.action_type))}</strong><span>Processing type</span><small>${escapeHtml(item.responsibility_mode || "joint")} responsibility</small></div>
+          <div><strong>${escapeHtml(correspondence?.letter_number || correspondence?.subject || "No linked correspondence")}</strong><span>${correspondence ? escapeHtml(correspondence.subject || "Linked correspondence") : "Correspondence"}</span></div>
+          <div><strong>${escapeHtml(item.competent_authority_id ? actionUserName(item.competent_authority_id) : "Not specified")}</strong><span>Competent authority</span></div>
+          <div><strong>${escapeHtml(item.verifier_id ? actionUserName(item.verifier_id) : "Not specified")}</strong><span>Verifier</span></div>
+        </div>
+        ${project ? `<button class="btn secondary action-detail-project" type="button" data-project-id="${project.id}">Open project workspace</button>` : ""}
+      </aside>
+    </div>
+    <div class="action-detail-grid">
+      <section class="action-detail-panel"><h2>Progress history</h2>${progressHistory(item) || `<div class="dashboard-empty">No progress updates recorded.</div>`}</section>
+      <section class="action-detail-panel"><h2>Workflow history</h2>${workflowHistory(item) || `<div class="dashboard-empty">No workflow events recorded.</div>`}</section>
+    </div>
+    ${actionDialog("")}${officeProcessDialog()}${progressDialog()}${verificationDialog()}
+  </main></div>`;
+}
+
+function bindActionDetailEvents(item) {
+  bindActionEvents(() => renderActionDetail(item.id));
+  document.querySelector("#action-detail-back")?.addEventListener("click", () => { location.hash = "#actions"; });
+  document.querySelector(".action-detail-project")?.addEventListener("click", (event) => {
+    location.hash = `#project/${event.currentTarget.dataset.projectId}`;
+  });
+}
+
+async function renderActionDetail(actionId) {
+  root.innerHTML = `<div class="loading-screen"><span class="spinner dark"></span><p>Loading action details...</p></div>`;
+  try {
+    await loadActionData();
+    const item = state.actionItems.find((record) => String(record.id) === String(actionId));
+    if (!item) {
+      root.innerHTML = actionDetailNotFoundTemplate();
+      bindCommonEvents();
+      document.querySelector("#action-not-found-back")?.addEventListener("click", () => { location.hash = "#actions"; });
+      return;
+    }
+    root.innerHTML = actionDetailTemplate(item);
+    bindActionDetailEvents(item);
+  } catch (error) {
+    root.innerHTML = `<div class="loading-screen"><p>${escapeHtml(error.message)}</p><button class="btn primary" id="action-load-error-back" type="button">Return to Action Tracking</button></div>`;
+    document.querySelector("#action-load-error-back")?.addEventListener("click", () => { location.hash = "#actions"; });
+  }
+}
+
 function projectActionsModule(project) {
   const items = state.actionItems.filter((item)=>item.project_id === project.id);
   const canCreate = ["admin","editor"].includes(state.profile?.role);
@@ -2993,6 +3123,7 @@ function bindActionEvents(onSaved) {
   const openNew = () => { populateActionForm(null); actionDialogElement.showModal(); };
   document.querySelector("#add-action-button")?.addEventListener("click", openNew);
   document.querySelector("#add-project-action")?.addEventListener("click", openNew);
+  document.querySelectorAll(".view-action-details").forEach((button)=>button.addEventListener("click",()=>openActionDetails(button.dataset.actionId)));
   document.querySelector("#action-project")?.addEventListener("change", (event)=>renderAssigneePicker(event.target.value, []));
   document.querySelectorAll(".edit-action-button").forEach((button)=>button.addEventListener("click",()=>{ const item=state.actionItems.find((a)=>a.id===button.dataset.actionId); if(item){populateActionForm(item); actionDialogElement.showModal();} }));
   document.querySelectorAll(".submit-progress-button").forEach((button)=>button.addEventListener("click",()=>{ document.querySelector("#progress-form").reset(); document.querySelector("#progress-action-id").value=button.dataset.actionId; progressDialogElement.showModal(); }));
@@ -3223,7 +3354,7 @@ function globalSearchItems(query){
     type:"Correspondence",title:c.subject||"Untitled correspondence",detail:`${c.letter_number||"No letter number"} · ${reportProjectName(c.project_id)}`,date:formatDate(c.letter_date),route:"#correspondence",recordId:c.id
   }));
   const actionResults=(state.actionItems||[]).filter(a=>includes(a.title,a.description,a.priority,a.status)).map(a=>({
-    type:"Action",title:a.title,detail:`${reportProjectName(a.project_id)} · ${actionStatusLabel(a.status)}`,date:a.due_date?`Due ${formatDate(a.due_date)}`:"",route:"#actions",recordId:a.id
+    type:"Action",title:a.title,detail:`${reportProjectName(a.project_id)} · ${actionStatusLabel(a.status)}`,date:a.due_date?`Due ${formatDate(a.due_date)}`:"",route:`#action/${encodeURIComponent(a.id)}`,recordId:a.id
   }));
   const inspectionResults=(state.inspections||[]).filter(i=>includes(i.inspection_type,i.observations,i.location_description,i.severity,i.status,chainageLabel(i))).map(i=>({
     type:"Inspection",title:`${(i.inspection_type||"general").replaceAll("_"," ")} inspection`,detail:`${reportProjectName(i.project_id)} · ${chainageLabel(i)}`,date:formatDate(i.inspection_date),route:"#inspections",recordId:i.id
@@ -3307,6 +3438,10 @@ function renderGlobalSearchResults(items){
     const recordId=button.dataset.recordId;
     box.hidden=true;
     document.querySelector("#global-search-input").value="";
+    if(recordType==="Action"){
+      openActionDetails(recordId);
+      return;
+    }
     location.hash=button.dataset.route;
     route();
     if(recordType!=="Project") openExactSearchRecord(recordType,recordId);
@@ -3683,6 +3818,11 @@ async function route() {
   if (hash === "#calendar") return renderCalendar();
   if (hash === "#inspections") return renderInspections();
   if (hash === "#reports") return renderReports();
+  const actionMatch = hash.match(/^#action\/(.+)$/);
+  if (actionMatch) {
+    try { return renderActionDetail(decodeURIComponent(actionMatch[1])); }
+    catch (error) { return renderActionDetail(""); }
+  }
   const match = hash.match(/^#project\/(.+)$/);
   if (match) return renderWorkspace(match[1]);
   renderRegister();
