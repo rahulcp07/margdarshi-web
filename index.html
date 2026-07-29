@@ -2947,6 +2947,7 @@ function actionIsOverdue(item, today = null) {
 
 function actionMatchesDueDate(item, category) {
   if (category === "all") return true;
+  if (!actionIsOpen(item)) return false;
   if (category === "no_due_date") return !item.due_date;
   if (!item.due_date) return false;
   const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -2955,7 +2956,11 @@ function actionMatchesDueDate(item, category) {
   if (category === "today") return due.getTime() === today.getTime();
   if (category === "next_7_days") {
     const end = new Date(today); end.setDate(end.getDate() + 7);
-    return due >= today && due <= end;
+    return due > today && due <= end;
+  }
+  if (category === "more_than_7_days") {
+    const end = new Date(today); end.setDate(end.getDate() + 7);
+    return due > end;
   }
   return true;
 }
@@ -3022,7 +3027,7 @@ function actionFiltersTemplate() {
       <label><span>Priority</span><select id="action-filter-priority"><option value="all">All priorities</option>${[["urgent","Urgent"],["high","High"],["normal","Normal"],["low","Low"]].map(([value,label]) => `<option value="${value}" ${filters.priority===value?"selected":""}>${label}</option>`).join("")}</select></label>
       <label><span>Assignee</span><select id="action-filter-assignee"><option value="all">All assignees</option>${state.assignableUsers.map((user) => `<option value="${user.id}" ${filters.assignee===String(user.id)?"selected":""}>${escapeHtml(user.full_name)}</option>`).join("")}</select></label>
       <label><span>Workflow stage</span><select id="action-filter-workflow"><option value="all">All workflow stages</option>${WORKFLOW_STAGES.map(([value,label]) => `<option value="${value}" ${filters.workflowStage===value?"selected":""}>${escapeHtml(label)}</option>`).join("")}</select></label>
-      <label><span>Due date</span><select id="action-filter-due"><option value="all">All due dates</option>${[["overdue","Overdue"],["today","Due today"],["next_7_days","Due in next 7 days"],["no_due_date","No due date"]].map(([value,label]) => `<option value="${value}" ${filters.dueDate===value?"selected":""}>${label}</option>`).join("")}</select></label>
+      <label><span>Due date</span><select id="action-filter-due"><option value="all">All due dates</option>${[["overdue","Overdue"],["today","Due today"],["next_7_days","Due in next 7 days"],["more_than_7_days","More than 7 days"],["no_due_date","No due date"]].map(([value,label]) => `<option value="${value}" ${filters.dueDate===value?"selected":""}>${label}</option>`).join("")}</select></label>
     </div>
     <div class="action-filter-actions"><span id="action-filter-summary"></span><button class="btn reset" id="reset-action-filters" type="button">${icon("reset",18)}Reset</button></div>
   </div>`;
