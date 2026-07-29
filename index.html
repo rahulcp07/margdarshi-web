@@ -425,8 +425,19 @@ h1, h2, h3, p { overflow-wrap: anywhere; }
 .jurisdiction-row strong, .jurisdiction-row span { display: block; }
 .jurisdiction-row span { margin-top: 3px; color: var(--muted); font-size: 10px; }
 
-.action-filters { display: flex; gap: 10px; flex-wrap: wrap; }
-.action-filters select, .action-filters input { width: auto; min-width: 165px; }
+.action-filter-panel { display: grid; gap: 14px; margin-bottom: 18px; }
+.action-quick-views { display: grid; grid-template-columns: repeat(5,minmax(120px,1fr)); gap: 10px; }
+.action-quick-view { display: grid; gap: 4px; padding: 13px 14px; border: 1px solid var(--border); border-radius: 9px; color: var(--text); background: #fff; text-align: left; cursor: pointer; }
+.action-quick-view span { color: var(--muted); font-size: 10px; }
+.action-quick-view strong { font-size: 19px; }
+.action-quick-view.active { border-color: #0f5a91; color: #0f5a91; background: #eff7fc; box-shadow: 0 0 0 2px rgba(15,90,145,.09); }
+.action-filters { display: grid; grid-template-columns: minmax(220px,1.5fr) repeat(3,minmax(145px,1fr)); gap: 10px; align-items: end; }
+.action-filters label { display: grid; gap: 6px; color: var(--muted); font-size: 10px; font-weight: 700; }
+.action-filters select, .action-filters input { width: 100%; min-width: 0; }
+.action-filter-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.action-filter-actions span { color: var(--muted); font-size: 11px; }
+.action-filter-actions strong { color: var(--text); }
+.action-filter-empty { min-height: 220px; }
 .action-list { display: grid; gap: 12px; }
 .action-item { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 18px; padding: 16px 18px; border: 1px solid var(--border); border-radius: 10px; background: #fff; }
 .action-item.overdue { border-left: 4px solid #dc2626; }
@@ -478,9 +489,9 @@ h1, h2, h3, p { overflow-wrap: anywhere; }
 .action-detail-empty { padding: 42px 24px; text-align: center; }
 .action-detail-empty h1 { margin: 15px 0 7px; }
 .action-detail-empty p { margin: 0 0 18px; color: var(--muted); }
-@media (max-width:900px){.action-summary-grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:900px){.action-summary-grid{grid-template-columns:repeat(2,1fr)}.action-quick-views{grid-template-columns:repeat(3,1fr)}.action-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.action-filter-search{grid-column:1/-1}}
 @media (max-width:900px){.action-detail-grid{grid-template-columns:1fr}.action-detail-stats{grid-template-columns:repeat(2,1fr)}}
-@media (max-width:720px){.action-item{grid-template-columns:1fr}.action-side{text-align:left;min-width:0}.action-detail-title-row{flex-direction:column}.action-detail-actions{justify-content:flex-start}.action-detail-stats{grid-template-columns:1fr}}
+@media (max-width:720px){.action-item{grid-template-columns:1fr}.action-side{text-align:left;min-width:0}.action-detail-title-row{flex-direction:column}.action-detail-actions{justify-content:flex-start}.action-detail-stats{grid-template-columns:1fr}.action-quick-views{grid-template-columns:repeat(2,minmax(0,1fr))}.action-filters{grid-template-columns:1fr}.action-filter-search{grid-column:auto}}
 
 .file-selected { color: var(--primary); font-weight: 600; }
 
@@ -538,7 +549,7 @@ const CONFIG = Object.freeze({
   supabasePublishableKey: "sb_publishable_hYB33w3ZowZunNnnJv3OkQ_GbKe2OhE",
   appName: "MARGDARSHI",
   officeName: "National Highway Division, Dhule",
-  buildLabel: "R5.6",
+  buildLabel: "R5.7",
 });
 
 const paths = {
@@ -1172,6 +1183,17 @@ async function createProject(payload) {
 }
 
 
+const DEFAULT_ACTION_FILTERS = Object.freeze({
+  query: "",
+  project: "all",
+  status: "all",
+  priority: "all",
+  assignee: "all",
+  workflowStage: "all",
+  dueDate: "all",
+  quickView: "all",
+});
+
 const root = document.querySelector("#app");
 const state = {
   session: null,
@@ -1201,6 +1223,7 @@ const state = {
   demo: new URLSearchParams(location.search).get("demo") === "1",
   loading: true,
   filters: { query: "", highway: "all", status: "all", office: "all" },
+  actionFilters: { ...DEFAULT_ACTION_FILTERS },
 };
 
 function escapeHtml(value = "") {
@@ -2173,6 +2196,14 @@ function bindDashboardEvents(){
         navigateToDashboardRecord(recordType,element.dataset.dashboardRecordId,element.dataset.dashboardRoute);
         return;
       }
+      if(element.matches('.dashboard-kpi[data-dashboard-route="#actions"]')){
+        openActionRegisterView("open");
+        return;
+      }
+      if(element.matches('.quick-link[data-dashboard-route="#actions"]')){
+        openActionRegisterView("all");
+        return;
+      }
       location.hash=element.dataset.dashboardRoute;
       route();
     };
@@ -2897,24 +2928,130 @@ function verificationDialog() {
   </form></dialog>`;
 }
 
+function pendingVerificationActionIds() {
+  return new Set(state.actionProgressUpdates
+    .filter((update) => update.verification_status === "pending")
+    .map((update) => String(update.action_id)));
+}
+
+function actionIsOpen(item) {
+  return !["completed", "cancelled"].includes(item.status);
+}
+
+function actionIsOverdue(item, today = null) {
+  if (!item.due_date || !actionIsOpen(item)) return false;
+  const currentDay = today || new Date();
+  currentDay.setHours(0, 0, 0, 0);
+  return new Date(`${item.due_date}T00:00:00`) < currentDay;
+}
+
+function actionMatchesDueDate(item, category) {
+  if (category === "all") return true;
+  if (category === "no_due_date") return !item.due_date;
+  if (!item.due_date) return false;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const due = new Date(`${item.due_date}T00:00:00`);
+  if (category === "overdue") return actionIsOverdue(item, today);
+  if (category === "today") return due.getTime() === today.getTime();
+  if (category === "next_7_days") {
+    const end = new Date(today); end.setDate(end.getDate() + 7);
+    return due >= today && due <= end;
+  }
+  return true;
+}
+
+function filteredActionItems() {
+  const filters = state.actionFilters;
+  const pendingIds = pendingVerificationActionIds();
+  const query = filters.query.trim().toLowerCase();
+  return state.actionItems.filter((item) => {
+    if (filters.quickView === "open" && !actionIsOpen(item)) return false;
+    if (filters.quickView === "overdue" && !actionIsOverdue(item)) return false;
+    if (filters.quickView === "pending_verification" && !pendingIds.has(String(item.id))) return false;
+    if (filters.quickView === "completed" && item.status !== "completed") return false;
+    if (filters.project !== "all" && String(item.project_id) !== filters.project) return false;
+    if (filters.status !== "all" && item.status !== filters.status) return false;
+    if (filters.priority !== "all" && (item.priority || "normal") !== filters.priority) return false;
+    if (filters.workflowStage !== "all" && (item.workflow_stage || "received") !== filters.workflowStage) return false;
+    if (filters.assignee !== "all" && !actionAssigneesFor(item.id).some((assignment) => String(assignment.user_id) === filters.assignee)) return false;
+    if (!actionMatchesDueDate(item, filters.dueDate)) return false;
+    if (query) {
+      const project = state.projects.find((record) => String(record.id) === String(item.project_id));
+      const assigneeNames = actionAssigneesFor(item.id).map((assignment) => actionUserName(assignment.user_id));
+      const searchable = [
+        item.title, item.description, item.issuer_note, item.office_processing_note,
+        item.priority, actionStatusLabel(item.status), workflowStageLabel(item.workflow_stage),
+        project?.project_code, project?.project_name, ...assigneeNames,
+      ].map((value) => String(value || "").toLowerCase());
+      if (!searchable.some((value) => value.includes(query))) return false;
+    }
+    return true;
+  });
+}
+
 function actionSummary(items) {
-  const today = new Date(); today.setHours(0,0,0,0);
+  const pendingIds = pendingVerificationActionIds();
   return {
-    open: items.filter((i)=>!["completed","cancelled"].includes(i.status)).length,
-    overdue: items.filter((i)=>i.due_date && !["completed","cancelled"].includes(i.status) && new Date(`${i.due_date}T00:00:00`) < today).length,
-    pending: state.actionProgressUpdates.filter((u)=>u.verification_status === "pending").length,
-    completed: items.filter((i)=>i.status === "completed").length,
+    all: items.length,
+    open: items.filter(actionIsOpen).length,
+    overdue: items.filter((item) => actionIsOverdue(item)).length,
+    pending: items.filter((item) => pendingIds.has(String(item.id))).length,
+    completed: items.filter((item) => item.status === "completed").length,
   };
 }
 
+function actionQuickViewsTemplate(summary) {
+  const views = [
+    ["all", "All Actions", summary.all],
+    ["open", "Open", summary.open],
+    ["overdue", "Overdue", summary.overdue],
+    ["pending_verification", "Pending Verification", summary.pending],
+    ["completed", "Completed", summary.completed],
+  ];
+  return `<div class="action-quick-views" role="group" aria-label="Action register quick views">${views.map(([value,label,count]) => `<button class="action-quick-view ${state.actionFilters.quickView===value?"active":""}" type="button" data-action-quick-view="${value}" aria-pressed="${state.actionFilters.quickView===value}"><span>${label}</span><strong>${count}</strong></button>`).join("")}</div>`;
+}
+
+function actionFiltersTemplate() {
+  const filters = state.actionFilters;
+  return `<div class="action-filter-panel">
+    ${actionQuickViewsTemplate(actionSummary(state.actionItems))}
+    <div class="action-filters">
+      <label class="action-filter-search"><span>Search</span><input id="action-filter-search" value="${escapeHtml(filters.query)}" placeholder="Search actions, projects or assignees..." /></label>
+      <label><span>Project</span><select id="action-filter-project"><option value="all">All projects</option>${state.projects.map((project) => `<option value="${project.id}" ${filters.project===String(project.id)?"selected":""}>${escapeHtml(project.project_code || project.project_name)}</option>`).join("")}</select></label>
+      <label><span>Status</span><select id="action-filter-status"><option value="all">All statuses</option>${[["open","Open"],["in_progress","In Progress"],["awaiting_response","Awaiting Response"],["completed","Completed"],["cancelled","Cancelled"]].map(([value,label]) => `<option value="${value}" ${filters.status===value?"selected":""}>${label}</option>`).join("")}</select></label>
+      <label><span>Priority</span><select id="action-filter-priority"><option value="all">All priorities</option>${[["urgent","Urgent"],["high","High"],["normal","Normal"],["low","Low"]].map(([value,label]) => `<option value="${value}" ${filters.priority===value?"selected":""}>${label}</option>`).join("")}</select></label>
+      <label><span>Assignee</span><select id="action-filter-assignee"><option value="all">All assignees</option>${state.assignableUsers.map((user) => `<option value="${user.id}" ${filters.assignee===String(user.id)?"selected":""}>${escapeHtml(user.full_name)}</option>`).join("")}</select></label>
+      <label><span>Workflow stage</span><select id="action-filter-workflow"><option value="all">All workflow stages</option>${WORKFLOW_STAGES.map(([value,label]) => `<option value="${value}" ${filters.workflowStage===value?"selected":""}>${escapeHtml(label)}</option>`).join("")}</select></label>
+      <label><span>Due date</span><select id="action-filter-due"><option value="all">All due dates</option>${[["overdue","Overdue"],["today","Due today"],["next_7_days","Due in next 7 days"],["no_due_date","No due date"]].map(([value,label]) => `<option value="${value}" ${filters.dueDate===value?"selected":""}>${label}</option>`).join("")}</select></label>
+    </div>
+    <div class="action-filter-actions"><span id="action-filter-summary"></span><button class="btn reset" id="reset-action-filters" type="button">${icon("reset",18)}Reset</button></div>
+  </div>`;
+}
+
+function actionRegisterResultsTemplate(items = filteredActionItems()) {
+  const total = state.actionItems.length;
+  const content = items.length ? actionList(items, true) : total
+    ? `<div class="empty-state action-filter-empty">${icon("search",42)}<h3>No actions match these filters</h3><p>Adjust the filters or use Reset to show the full register.</p></div>`
+    : actionList(items, true);
+  return content;
+}
+
+function openActionRegisterView(quickView = "all") {
+  const allowed = new Set(["all", "open", "overdue", "pending_verification", "completed"]);
+  state.actionFilters = { ...DEFAULT_ACTION_FILTERS, quickView: allowed.has(quickView) ? quickView : "all" };
+  if (location.hash === "#actions") {
+    renderActionPage();
+    return;
+  }
+  location.hash = "#actions";
+}
+
 function actionPageTemplate() {
-  const summary = actionSummary(state.actionItems);
   const canCreate = ["admin","editor"].includes(state.profile?.role);
   return `<div class="app-shell">${appHeader()}${sidebar("actions")}<main class="main-content action-page">
     <div class="breadcrumb"><span>Dashboard</span><b>/</b>Action Tracking</div>
     <div class="admin-heading"><div><h1>Action Tracking</h1><p>Instruction, execution, progress submission and senior verification.</p></div>${canCreate?`<button class="btn primary" id="add-action-button">${icon("plus")}Issue action</button>`:""}</div>
-    <section class="action-summary-grid"><div class="admin-metric"><span>Open actions</span><strong>${summary.open}</strong></div><div class="admin-metric"><span>Overdue</span><strong>${summary.overdue}</strong></div><div class="admin-metric"><span>Pending verification</span><strong>${summary.pending}</strong></div><div class="admin-metric"><span>Completed</span><strong>${summary.completed}</strong></div></section>
-    <section class="admin-card"><div class="admin-card-heading"><div><h2>Action register</h2><p>${state.actionItems.length} action${state.actionItems.length===1?"":"s"} recorded.</p></div></div><div style="padding:18px 20px;">${actionList(state.actionItems,true)}</div></section>
+    <section class="admin-card"><div class="admin-card-heading"><div><h2>Action register</h2><p>Filter the actions currently available to you.</p></div></div><div style="padding:18px 20px;">${actionFiltersTemplate()}<div id="action-register-results">${actionRegisterResultsTemplate()}</div></div></section>
     ${actionDialog("")}${officeProcessDialog()}${progressDialog()}${verificationDialog()}
   </main></div>`;
 }
@@ -3111,6 +3248,86 @@ function suggestedWorkflowStage(eventType) {
   })[eventType] || "received";
 }
 
+function syncActionFilterControls() {
+  const filters = state.actionFilters;
+  const values = {
+    "#action-filter-search": filters.query,
+    "#action-filter-project": filters.project,
+    "#action-filter-status": filters.status,
+    "#action-filter-priority": filters.priority,
+    "#action-filter-assignee": filters.assignee,
+    "#action-filter-workflow": filters.workflowStage,
+    "#action-filter-due": filters.dueDate,
+  };
+  Object.entries(values).forEach(([selector,value]) => {
+    const control = document.querySelector(selector);
+    if (control && control.value !== value) control.value = value;
+  });
+  document.querySelectorAll("[data-action-quick-view]").forEach((button) => {
+    const active = button.dataset.actionQuickView === filters.quickView;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+  const summary = document.querySelector("#action-filter-summary");
+  if (summary) {
+    const shown = filteredActionItems().length;
+    const total = state.actionItems.length;
+    summary.innerHTML = `<strong>${shown}</strong> of <strong>${total}</strong> action${total===1?"":"s"} shown`;
+  }
+}
+
+function bindActionCardEvents(scope = document) {
+  const actionDialogElement = document.querySelector("#action-dialog");
+  const progressDialogElement = document.querySelector("#progress-dialog");
+  const verificationDialogElement = document.querySelector("#verification-dialog");
+  const officeProcessDialogElement = document.querySelector("#office-process-dialog");
+  scope.querySelectorAll(".view-action-details").forEach((button)=>button.addEventListener("click",()=>openActionDetails(button.dataset.actionId)));
+  scope.querySelectorAll(".edit-action-button").forEach((button)=>button.addEventListener("click",()=>{ const item=state.actionItems.find((action)=>action.id===button.dataset.actionId); if(item){populateActionForm(item); actionDialogElement?.showModal();} }));
+  scope.querySelectorAll(".submit-progress-button").forEach((button)=>button.addEventListener("click",()=>{ document.querySelector("#progress-form")?.reset(); document.querySelector("#progress-action-id").value=button.dataset.actionId; progressDialogElement?.showModal(); }));
+  scope.querySelectorAll(".process-office-action-button").forEach((button)=>button.addEventListener("click",()=>{
+    document.querySelector("#office-process-form")?.reset();
+    document.querySelector("#office-process-action-id").value=button.dataset.actionId;
+    const outcome = document.querySelector("#office-process-event");
+    const stage = document.querySelector("#office-process-stage");
+    if (outcome && stage) stage.value = suggestedWorkflowStage(outcome.value);
+    officeProcessDialogElement?.showModal();
+  }));
+  scope.querySelectorAll(".verify-progress-button").forEach((button)=>button.addEventListener("click",()=>{ const update=state.actionProgressUpdates.find((item)=>item.id===button.dataset.updateId); document.querySelector("#verification-form")?.reset(); document.querySelector("#verification-update-id").value=button.dataset.updateId; document.querySelector("#verification-action-id").value=button.dataset.actionId; document.querySelector("#verification-percent").value=update?.claimed_progress_percent ?? 0; verificationDialogElement?.showModal(); }));
+}
+
+function renderFilteredActionResults(onSaved) {
+  const results = document.querySelector("#action-register-results");
+  if (!results) return;
+  results.innerHTML = actionRegisterResultsTemplate();
+  syncActionFilterControls();
+  bindActionCardEvents(results);
+}
+
+function bindActionFilterEvents(onSaved) {
+  if (!document.querySelector("#action-filter-search")) return;
+  const update = (key,value) => {
+    state.actionFilters = { ...state.actionFilters, [key]: value };
+    renderFilteredActionResults(onSaved);
+  };
+  document.querySelector("#action-filter-search")?.addEventListener("input", (event) => update("query", event.target.value));
+  [
+    ["#action-filter-project","project"],
+    ["#action-filter-status","status"],
+    ["#action-filter-priority","priority"],
+    ["#action-filter-assignee","assignee"],
+    ["#action-filter-workflow","workflowStage"],
+    ["#action-filter-due","dueDate"],
+  ].forEach(([selector,key]) => document.querySelector(selector)?.addEventListener("change", (event) => update(key, event.target.value)));
+  document.querySelectorAll("[data-action-quick-view]").forEach((button) => button.addEventListener("click", () => update("quickView", button.dataset.actionQuickView)));
+  document.querySelector("#reset-action-filters")?.addEventListener("click", () => {
+    state.actionFilters = { ...DEFAULT_ACTION_FILTERS };
+    syncActionFilterControls();
+    renderFilteredActionResults(onSaved);
+    document.querySelector("#action-filter-search")?.focus();
+  });
+  syncActionFilterControls();
+}
+
 function bindActionEvents(onSaved) {
   bindCommonEvents();
   const actionDialogElement = document.querySelector("#action-dialog");
@@ -3125,19 +3342,9 @@ function bindActionEvents(onSaved) {
   const openNew = () => { populateActionForm(null); actionDialogElement.showModal(); };
   document.querySelector("#add-action-button")?.addEventListener("click", openNew);
   document.querySelector("#add-project-action")?.addEventListener("click", openNew);
-  document.querySelectorAll(".view-action-details").forEach((button)=>button.addEventListener("click",()=>openActionDetails(button.dataset.actionId)));
+  bindActionCardEvents();
+  bindActionFilterEvents(onSaved);
   document.querySelector("#action-project")?.addEventListener("change", (event)=>renderAssigneePicker(event.target.value, []));
-  document.querySelectorAll(".edit-action-button").forEach((button)=>button.addEventListener("click",()=>{ const item=state.actionItems.find((a)=>a.id===button.dataset.actionId); if(item){populateActionForm(item); actionDialogElement.showModal();} }));
-  document.querySelectorAll(".submit-progress-button").forEach((button)=>button.addEventListener("click",()=>{ document.querySelector("#progress-form").reset(); document.querySelector("#progress-action-id").value=button.dataset.actionId; progressDialogElement.showModal(); }));
-  document.querySelectorAll(".process-office-action-button").forEach((button)=>button.addEventListener("click",()=>{
-    document.querySelector("#office-process-form").reset();
-    document.querySelector("#office-process-action-id").value=button.dataset.actionId;
-    const outcome = document.querySelector("#office-process-event");
-    const stage = document.querySelector("#office-process-stage");
-    if (outcome && stage) stage.value = suggestedWorkflowStage(outcome.value);
-    officeProcessDialogElement.showModal();
-  }));
-  document.querySelectorAll(".verify-progress-button").forEach((button)=>button.addEventListener("click",()=>{ const update=state.actionProgressUpdates.find((u)=>u.id===button.dataset.updateId); document.querySelector("#verification-form").reset(); document.querySelector("#verification-update-id").value=button.dataset.updateId; document.querySelector("#verification-action-id").value=button.dataset.actionId; document.querySelector("#verification-percent").value=update?.claimed_progress_percent ?? 0; verificationDialogElement.showModal(); }));
 
   document.querySelector("#action-form")?.addEventListener("submit", async (event)=>{
     event.preventDefault(); const form=event.currentTarget; if(!form.checkValidity()){form.reportValidity();return;}
@@ -3521,6 +3728,10 @@ function bindCommonEvents() {
           return;
         }
         location.hash = "#admin";
+        return;
+      }
+      if (nav === "actions") {
+        openActionRegisterView("all");
         return;
       }
       if (activeRoutes[nav]) {
