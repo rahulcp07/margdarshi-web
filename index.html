@@ -221,7 +221,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); box-sh
 }
 
 .project-documents{display:grid;gap:12px}.project-document-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center;padding:13px;border:1px solid var(--border);border-radius:10px;background:#fff}.project-document-row strong,.project-document-row span,.project-document-row small{display:block}.project-document-row span,.project-document-row small{margin-top:4px;color:var(--muted);font-size:10px}.document-actions{display:flex;gap:8px;flex-wrap:wrap}.timeline-list{position:relative;display:grid;gap:0;padding-left:18px}.timeline-list:before{content:"";position:absolute;left:5px;top:8px;bottom:8px;width:2px;background:#dbe4ee}.timeline-item{position:relative;padding:0 0 18px 18px}.timeline-item:last-child{padding-bottom:0}.timeline-item:before{content:"";position:absolute;left:-18px;top:6px;width:10px;height:10px;border-radius:50%;background:#0f5a91;border:2px solid #fff;box-shadow:0 0 0 2px #bfd3e5}.timeline-item strong,.timeline-item span,.timeline-item small{display:block}.timeline-item span{margin-top:4px;color:#475569;font-size:10px}.timeline-item small{margin-top:4px;color:var(--muted);font-size:9px}.module-header{display:flex;justify-content:space-between;gap:14px;align-items:center;flex-wrap:wrap;margin-bottom:14px}.module-header h2{margin:0}.module-header p{margin:5px 0 0;color:var(--muted);font-size:11px}
-.quick-link{padding:13px;border:1px solid var(--border);border-radius:9px;background:#f8fafc;text-align:left;cursor:pointer}.quick-link strong,.quick-link span{display:block}.quick-link span{margin-top:4px;color:var(--muted);font-size:9px}@media(max-width:1050px){.dashboard-kpis{grid-template-columns:repeat(2,1fr)}.dashboard-grid{grid-template-columns:1fr}}@media(max-width:620px){.dashboard-kpis,.quick-links{grid-template-columns:1fr}}
+.quick-link{padding:13px;border:1px solid var(--border);border-radius:9px;background:#f8fafc;text-align:left;cursor:pointer}.quick-link strong,.quick-link span{display:block}.quick-link span{margin-top:4px;color:var(--muted);font-size:9px}.dashboard-kpi:focus-visible,.dashboard-list-item:focus-visible,.dashboard-project-row:focus-visible{outline:3px solid #0f766e;outline-offset:3px}@media(max-width:1050px){.dashboard-kpis{grid-template-columns:repeat(2,1fr)}.dashboard-grid{grid-template-columns:1fr}}@media(max-width:620px){.dashboard-kpis,.quick-links{grid-template-columns:1fr}}
 .reports-page{display:grid;gap:22px}.report-toolbar{display:flex;justify-content:space-between;gap:14px;align-items:center;flex-wrap:wrap}.report-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.report-controls select{width:auto;min-width:190px}.report-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.report-card{padding:18px;border:1px solid var(--border);border-radius:12px;background:#fff}.report-card h2{margin:0 0 6px;font-size:18px}.report-table-wrap{overflow-x:auto;margin-top:14px}.report-table{width:100%;border-collapse:collapse;font-size:11px}.report-table th,.report-table td{padding:9px 10px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}.report-table th{color:#64748b;font-size:9px;text-transform:uppercase;letter-spacing:.05em;background:#f8fafc}.report-kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(130px,1fr));gap:12px;margin-top:14px}.report-kpi{padding:14px;border:1px solid var(--border);border-radius:10px;background:#f8fafc}.report-kpi span,.report-kpi strong{display:block}.report-kpi span{color:var(--muted);font-size:10px}.report-kpi strong{margin-top:5px;font-size:23px}.report-section-title{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}.report-section-title h3{margin:0;font-size:15px}.report-status-list{display:grid;gap:8px;margin-top:12px}.report-status-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 11px;border:1px solid var(--border);border-radius:8px;background:#fff}.report-status-row strong,.report-status-row span{display:block}.report-status-row span{margin-top:3px;color:var(--muted);font-size:10px}@media(max-width:980px){.report-grid{grid-template-columns:1fr}.report-kpi-grid{grid-template-columns:repeat(2,1fr)}}@media print{
   @page{size:A4 portrait;margin:10mm}
   body{background:#fff!important}
@@ -1350,7 +1350,7 @@ function sidebar(active = "projects") {
   ];
   return `<aside class="sidebar">
     <nav>${items.map(([ic, key, label]) => `<button class="nav-item ${active === key ? "active" : ""}" data-nav="${key}">${icon(ic)}<span>${label}</span>${key === "admin" ? icon("arrow", 16) : ""}</button>`).join("")}</nav>
-    <div class="sidebar-footer"><div class="road-mark">NH</div><strong>National Highway Wing</strong><span>Building safer, better highways · Build R5.4</span></div>
+    <div class="sidebar-footer"><div class="road-mark">NH</div><strong>National Highway Wing</strong><span>Building safer, better highways · Build R5.5</span></div>
   </aside>`;
 }
 
@@ -2044,7 +2044,112 @@ function dashProject(id){const p=state.projects.find(x=>x.id===id);return p?.pro
 function dashDate(v){if(!v)return'—';const x=String(v).match(/^\d{4}-\d{2}-\d{2}/)?.[0]||v;return formatDate(x);}
 function dashboardTemplate(){const d=dashboardData();const actions=[...d.overdue,...d.openActions.filter(a=>!d.overdue.some(o=>o.id===a.id))].slice(0,6);const projects=[...d.projects].sort((a,b)=>Number(a.physical_progress_pct||0)-Number(b.physical_progress_pct||0)).slice(0,6);const list=(items,kind)=>items.length?`<div class="dashboard-list">${items.map(i=>{if(kind==='correspondence')return`<div class="dashboard-list-item" data-dashboard-route="#correspondence"><div><strong>${escapeHtml(i.subject||'Untitled correspondence')}</strong><span>${escapeHtml(i.letter_number||'No letter number')} · ${escapeHtml(dashProject(i.project_id))}</span></div><div class="right"><strong>${escapeHtml(correspondenceStatusLabel(i.status))}</strong><small>${dashDate(i.letter_date)}</small></div></div>`;if(kind==='inspection')return`<div class="dashboard-list-item" data-dashboard-route="#inspections"><div><strong>${escapeHtml((i.inspection_type||'general').replaceAll('_',' '))} · ${escapeHtml(chainageLabel(i))}</strong><span>${escapeHtml(dashProject(i.project_id))}</span></div><div class="right"><strong>${escapeHtml(inspectionStatusLabel(i.status))}</strong><small>${dashDate(i.inspection_date)}</small></div></div>`;return`<div class="dashboard-list-item" data-dashboard-route="#calendar"><div><strong>${escapeHtml(i.title||i.event_title||'Calendar event')}</strong><span>${escapeHtml(i.description||i.event_type||'Calendar')}</span></div><div class="right"><strong>${dashDate(i.start_date||i.event_date||i.start_time||i.date)}</strong></div></div>`;}).join('')}</div>`:`<div class="dashboard-empty">No records available.</div>`;return`<div class="app-shell">${appHeader()}${sidebar('dashboard')}<main class="main-content dashboard-page"><div class="breadcrumb"><span>Dashboard</span></div><div class="dashboard-hero"><div><h1>Good morning, ${escapeHtml((state.profile?.full_name||'User').split(' ')[0])}</h1><p>Live overview of National Highway Division Dhule.</p></div><div class="dashboard-actions"><button class="btn secondary" data-dashboard-route="#calendar">Open calendar</button><button class="btn primary" data-dashboard-route="#reports">Open reports</button></div></div><div class="dashboard-kpis"><div class="dashboard-kpi" data-dashboard-route="#projects"><span>Total projects</span><strong>${d.projects.length}</strong><small>${d.activeProjects.length} active/current</small></div><div class="dashboard-kpi" data-dashboard-route="#correspondence"><span>Pending correspondence</span><strong>${d.pendingCorrespondence.length}</strong><small>Open or awaiting disposal</small></div><div class="dashboard-kpi" data-dashboard-route="#actions"><span>Open actions</span><strong>${d.openActions.length}</strong><small>${d.overdue.length} overdue</small></div><div class="dashboard-kpi" data-dashboard-route="#inspections"><span>Open inspections</span><strong>${d.openInspections.length}</strong><small>Compliance/follow-up pending</small></div></div><div class="dashboard-grid"><section class="dashboard-card"><div class="dashboard-card-heading"><h2>Project progress</h2><span>${d.projects.length} projects</span></div>${projects.length?`<div class="dashboard-projects">${projects.map(p=>`<div class="dashboard-project-row" data-project-id="${p.id}"><header><div><strong>${escapeHtml(p.project_name)}</strong><span>${escapeHtml(p.project_code||'')} · ${escapeHtml(p.status||'—')}</span></div><strong>${Number(p.physical_progress_pct||0)}%</strong></header><div class="dashboard-progress"><i style="width:${Math.max(0,Math.min(100,Number(p.physical_progress_pct||0)))}%"></i></div></div>`).join('')}</div>`:`<div class="dashboard-empty">No projects available.</div>`}</section><section class="dashboard-card"><div class="dashboard-card-heading"><h2>Priority actions</h2><span>${d.overdue.length} overdue</span></div>${actions.length?`<div class="dashboard-list">${actions.map(a=>`<div class="dashboard-list-item" data-dashboard-route="#actions"><div><strong>${escapeHtml(a.title)}</strong><span>${escapeHtml(dashProject(a.project_id))}</span></div><div class="right"><strong>${escapeHtml(actionStatusLabel(a.status))}</strong><small>${a.due_date?'Due '+dashDate(a.due_date):'No due date'}</small></div></div>`).join('')}</div>`:`<div class="dashboard-empty">No open actions.</div>`}</section></div><div class="dashboard-grid"><section class="dashboard-card"><div class="dashboard-card-heading"><h2>Recent correspondence</h2><span>${d.pendingCorrespondence.length} pending</span></div>${list(d.recentCorrespondence,'correspondence')}</section><section class="dashboard-card"><div class="dashboard-card-heading"><h2>Upcoming 7 days</h2><span>${d.upcoming.length} items</span></div>${list(d.upcoming,'calendar')}</section></div><div class="dashboard-grid"><section class="dashboard-card"><div class="dashboard-card-heading"><h2>Recent inspections</h2><span>${d.openInspections.length} open</span></div>${list(d.recentInspections,'inspection')}</section><section class="dashboard-card"><div class="dashboard-card-heading"><h2>Quick links</h2><span>Common tasks</span></div><div class="quick-links">${[['#projects','Project Register','Open projects and packages'],['#correspondence','Correspondence','Incoming and outgoing letters'],['#actions','Action Tracking','Assignments and compliance'],['#inspections','Inspections','Site observations and photos'],['#calendar','Calendar','Milestones and reminders'],['#reports','Reports','Print and export summaries']].map(x=>`<button class="quick-link" data-dashboard-route="${x[0]}"><strong>${x[1]}</strong><span>${x[2]}</span></button>`).join('')}</div></section></div></main></div>`;}
 async function renderDashboard(){root.innerHTML=`<div class="loading-screen"><span class="spinner dark"></span><p>Loading dashboard...</p></div>`;try{[state.correspondence,state.actionItems,state.actionAssignees,state.actionProgressUpdates,state.inspections,state.calendarEvents]=await Promise.all([getCorrespondence(),getActionItems(),getActionAssignees(),getActionProgressUpdates(),getInspections(),getCalendarEvents()]);root.innerHTML=dashboardTemplate();bindDashboardEvents();}catch(error){root.innerHTML=`<div class="loading-screen"><p>${escapeHtml(error.message)}</p></div>`;}}
-function bindDashboardEvents(){bindCommonEvents();document.querySelectorAll('[data-dashboard-route]').forEach(e=>e.addEventListener('click',()=>{location.hash=e.dataset.dashboardRoute;route();}));document.querySelectorAll('[data-project-id]').forEach(e=>e.addEventListener('click',()=>{location.hash=`#project/${e.dataset.projectId}`;route();}));}
+function bindDashboardActivation(element,activate){
+  element.setAttribute("role","link");
+  element.tabIndex=0;
+  if(!element.getAttribute("aria-label")) element.setAttribute("aria-label",`Open ${element.textContent.trim().replace(/\s+/g," ")}`);
+  element.addEventListener("click",activate);
+  element.addEventListener("keydown",(event)=>{
+    if(event.key!=="Enter"&&event.key!==" ")return;
+    event.preventDefault();
+    activate();
+  });
+}
+
+function dashboardNavigationFallback(parentRoute){
+  if(parentRoute&&location.hash!==parentRoute){
+    location.hash=parentRoute;
+  }
+  showToast("The selected record is no longer available. Opened the parent register.","info");
+}
+
+function openExactDashboardCalendarRecord(recordId,parentRoute){
+  if(!recordId){
+    dashboardNavigationFallback(parentRoute);
+    return;
+  }
+  let attempts=0;
+  const tryOpen=()=>{
+    attempts+=1;
+    try{
+      const item=calendarItems().find((entry)=>entry.kind==="manual"&&String(entry.sourceId)===String(recordId));
+      if(item){
+        const dialog=document.querySelector("#calendar-event-dialog");
+        if(item.editable&&dialog){
+          openCalendarItem(item,dialog);
+          return;
+        }
+        const chip=[...document.querySelectorAll("[data-calendar-item]")].find((element)=>element.dataset.calendarItem===item.id);
+        if(chip){
+          chip.scrollIntoView({behavior:"smooth",block:"center"});
+          chip.classList.add("calendar-target-highlight");
+          setTimeout(()=>chip.classList.remove("calendar-target-highlight"),3500);
+          return;
+        }
+      }
+    }catch(error){}
+    if(attempts<12){
+      setTimeout(tryOpen,180);
+      return;
+    }
+    dashboardNavigationFallback(parentRoute);
+  };
+  setTimeout(tryOpen,120);
+}
+
+function navigateToDashboardRecord(recordType,recordId,parentRoute){
+  if(recordType==="Calendar"){
+    const event=state.calendarEvents.find((item)=>String(item.id)===String(recordId));
+    if(event?.event_date) state.calendarViewDate=new Date(`${event.event_date}T00:00:00`);
+  }
+  const routeUnchanged=location.hash===parentRoute;
+  location.hash=parentRoute;
+  if(routeUnchanged) route();
+  if(recordType==="Calendar"){
+    openExactDashboardCalendarRecord(recordId,parentRoute);
+    return;
+  }
+  openExactSearchRecord(recordType,recordId,{fallbackRoute:parentRoute,notifyOnFailure:true});
+}
+
+function bindDashboardEvents(){
+  bindCommonEvents();
+  const data=dashboardData();
+  const actionRecords=[...data.overdue,...data.openActions.filter((item)=>!data.overdue.some((overdue)=>overdue.id===item.id))].slice(0,6);
+  const recordGroups=[
+    ['.dashboard-list-item[data-dashboard-route="#actions"]',actionRecords,"Action"],
+    ['.dashboard-list-item[data-dashboard-route="#correspondence"]',data.recentCorrespondence,"Correspondence"],
+    ['.dashboard-list-item[data-dashboard-route="#inspections"]',data.recentInspections,"Inspection"],
+    ['.dashboard-list-item[data-dashboard-route="#calendar"]',data.upcoming,"Calendar"],
+  ];
+  recordGroups.forEach(([selector,records,type])=>{
+    document.querySelectorAll(selector).forEach((element,index)=>{
+      const record=records[index];
+      if(!record)return;
+      element.dataset.dashboardRecordType=type;
+      element.dataset.dashboardRecordId=record.id;
+    });
+  });
+  document.querySelectorAll("[data-dashboard-route]").forEach((element)=>{
+    const activate=()=>{
+      const recordType=element.dataset.dashboardRecordType;
+      if(recordType){
+        navigateToDashboardRecord(recordType,element.dataset.dashboardRecordId,element.dataset.dashboardRoute);
+        return;
+      }
+      location.hash=element.dataset.dashboardRoute;
+      route();
+    };
+    if(element.matches(".dashboard-kpi,.dashboard-list-item")) bindDashboardActivation(element,activate);
+    else element.addEventListener("click",activate);
+  });
+  document.querySelectorAll("[data-project-id]").forEach((element)=>{
+    bindDashboardActivation(element,()=>{
+      location.hash=`#project/${element.dataset.projectId}`;
+      route();
+    });
+  });
+}
 function reportData(){
   const pid=state.reportProjectId||"";
   const projects=pid?state.projects.filter(p=>p.id===pid):state.projects;
@@ -2677,7 +2782,7 @@ function actionList(items, showProject = true) {
     const correspondence = state.correspondence.find((c) => c.id === item.correspondence_id);
     const assignees = actionAssigneesFor(item.id);
     const assigneeText = assignees.length ? assignees.map((a) => `${a.responsibility_type === "lead" ? "Lead" : "Supporting"}: ${actionUserName(a.user_id)}`).join(" · ") : "Unassigned";
-    return `<article class="action-item ${actionTimingClass(item)}">
+    return `<article class="action-item ${actionTimingClass(item)}" data-action-record-id="${item.id}">
       <div>
         <div class="action-topline">
           <span class="priority-pill ${item.priority || "normal"}">${item.priority || "normal"}</span>
@@ -3127,35 +3232,56 @@ function globalSearchItems(query){
 }
 
 
-function openExactSearchRecord(type,id){
-  if(!id)return;
+function highlightExactRecord(row){
+  row.scrollIntoView({behavior:"smooth",block:"center"});
+  row.classList.add("search-highlight");
+  setTimeout(()=>row.classList.remove("search-highlight"),3500);
+}
+
+function openExactSearchRecord(type,id,options={}){
+  if(!id){
+    if(options.notifyOnFailure) dashboardNavigationFallback(options.fallbackRoute);
+    return;
+  }
   const attempts=12;
   let count=0;
   const tryOpen=()=>{
     count+=1;
     try{
-      if(type==="Action"&&typeof openActionDetails==="function"){
-        openActionDetails(id);
-        return;
+      if(type==="Action"){
+        const item=state.actionItems.find(record=>String(record.id)===String(id));
+        if(item&&typeof openActionDetails==="function"){
+          openActionDetails(id);
+          return;
+        }
+        const row=[...document.querySelectorAll("[data-action-record-id]")].find(element=>String(element.dataset.actionRecordId)===String(id));
+        if(row){
+          highlightExactRecord(row);
+          return;
+        }
       }
       if(type==="Correspondence"){
-        const item=state.correspondence.find(record=>record.id===id);
-        const editButton=document.querySelector(`.edit-correspondence-button[data-id="${id}"]`);
-        const row=document.querySelector(`[data-correspondence-id="${id}"]`);
-        if(row){row.scrollIntoView({behavior:"smooth",block:"center"});row.classList.add("search-highlight");setTimeout(()=>row.classList.remove("search-highlight"),3500);return;}
+        const item=state.correspondence.find(record=>String(record.id)===String(id));
+        const editButton=[...document.querySelectorAll(".edit-correspondence-button[data-id]")].find(element=>String(element.dataset.id)===String(id));
+        const row=[...document.querySelectorAll("[data-correspondence-id]")].find(element=>String(element.dataset.correspondenceId)===String(id));
+        if(row){highlightExactRecord(row);return;}
         if(editButton){editButton.click();return;}
         if(item&&typeof openCorrespondenceModal==="function"){openCorrespondenceModal(item);return;}
       }
       if(type==="Inspection"){
-        const editButton=document.querySelector(`.edit-inspection-button[data-id="${id}"]`);
-        const row=document.querySelector(`[data-inspection-id="${id}"]`);
-        if(row){row.scrollIntoView({behavior:"smooth",block:"center"});row.classList.add("search-highlight");setTimeout(()=>row.classList.remove("search-highlight"),3500);return;}
+        const editButton=[...document.querySelectorAll(".edit-inspection-button[data-id]")].find(element=>String(element.dataset.id)===String(id));
+        const row=[...document.querySelectorAll("[data-inspection-id]")].find(element=>String(element.dataset.inspectionId)===String(id));
+        if(row){highlightExactRecord(row);return;}
         if(editButton){editButton.click();return;}
-        const item=state.inspections.find(record=>record.id===id);
+        const item=state.inspections.find(record=>String(record.id)===String(id));
         if(item&&typeof openInspectionModal==="function"){openInspectionModal(item);return;}
       }
     }catch(error){}
-    if(count<attempts)setTimeout(tryOpen,180);
+    if(count<attempts){
+      setTimeout(tryOpen,180);
+      return;
+    }
+    if(options.notifyOnFailure) dashboardNavigationFallback(options.fallbackRoute);
   };
   setTimeout(tryOpen,120);
 }
