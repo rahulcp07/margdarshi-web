@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <meta name="theme-color" content="#174a7e" />
-<meta name="description" content="MARGDARSHI — National Highway administration and project reporting system." />
+<meta name="description" content="MARGDARSHI — infrastructure administration, reporting and assurance workspace." />
 <title>MARGDARSHI</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -78,6 +78,9 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); box-sh
 .auth-divider::before, .auth-divider::after { content: ""; height: 1px; flex: 1; background: #e4e9ef; }
 .preview-link { display: block; margin: 14px auto 0; border: 0; background: transparent; color: var(--teal); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; }
 .auth-security { margin: 20px 0 0; text-align: center; color: #94a3b8; font-size: 11px; line-height: 1.5; }
+.auth-about { margin-top: 20px; padding-top: 18px; border-top: 1px solid #e4e9ef; }
+.auth-about h3 { margin: 0; color: var(--text); font-size: 13px; }
+.auth-about p { margin: 7px 0 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
 .form-error { min-height: 16px; margin: 0; color: var(--red); font-size: 12px; font-weight: 500; }
 
 .password-field { position: relative; }
@@ -317,7 +320,7 @@ input:focus, select:focus, textarea:focus { border-color: var(--primary); box-sh
 .icon-button:hover { background: rgba(255,255,255,.12); }
 .sidebar { position: sticky; top: 96px; height: calc(100vh - 96px); display: flex; flex-direction: column; justify-content: space-between; padding: 24px 12px 14px; background: #fff; border-right: 1px solid var(--border); }
 .sidebar nav { display: grid; gap: 7px; }
-.nav-item { width: 100%; min-height: 52px; display: flex; align-items: center; gap: 14px; padding: 0 16px; border: 0; border-radius: 8px; color: #334155; background: transparent; text-align: left; font-size: 13px; }
+.nav-item { position: relative; width: 100%; min-height: 52px; display: flex; align-items: center; gap: 14px; padding: 0 16px; border: 0; border-radius: 8px; color: #334155; background: transparent; text-align: left; font-size: 13px; }
 .nav-item span { flex: 1; }.nav-item:hover { background: #f4f7fa; }.nav-item.active { position: relative; color: #0f4f93; background: #edf3f9; font-weight: 600; }
 .nav-item.active::before { content: ""; position: absolute; left: -12px; top: 0; bottom: 0; width: 3px; border-radius: 3px; background: #1664b3; }
 .sidebar-footer { padding: 18px 14px; border: 1px solid var(--border); border-radius: 10px; background: #fbfcfd; }
@@ -355,6 +358,9 @@ h1, h2, h3, p { overflow-wrap: anywhere; }
 @media (max-width: 900px) {
   .auth-page { grid-template-columns: 1fr; }.auth-brand-panel { display: none; }.auth-form-panel { min-height: 100vh; }.mobile-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; color: var(--primary); }.mobile-brand .emblem { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 8px; color: #fff; background: var(--primary); font-size: 10px; }
   .app-shell { grid-template-columns: 78px 1fr; grid-template-rows: 82px 1fr; }.topbar { grid-template-columns: 60px 1fr auto; height: 82px; padding: 0 16px; }.topbar .brand-lockup > div:last-child { display: none; }.topbar .brand-lockup { min-width: auto; }.topbar .emblem { width: 42px; height: 42px; }.global-search kbd { display: none; }.topbar-actions { gap: 10px; }.app-build-marker { padding-inline: 7px; font-size: 9px; }.sidebar { top: 82px; height: calc(100vh - 82px); padding-inline: 8px; }.nav-item { justify-content: center; padding: 0; }.nav-item span, .nav-item svg:last-child, .sidebar-footer strong, .sidebar-footer span { display: none; }.nav-item.active::before { left: -8px; }.sidebar-footer { padding: 10px; }.sidebar-footer .road-mark { width: 34px; height: 34px; margin: auto; }.main-content { padding: 22px 18px; }.filter-card { grid-template-columns: 1fr 1fr; }.search-input { grid-column: 1 / -1; min-height: 43px; }.btn.reset { width: 100%; }.workspace-stat-grid { grid-template-columns: 1fr 1fr; }.overview-layout { grid-template-columns: 1fr; }
+}
+@media (min-width: 641px) and (max-width: 900px) {
+  .nav-item:hover::after, .nav-item:focus-visible::after { content: attr(data-tooltip); position: absolute; z-index: 90; left: calc(100% + 10px); top: 50%; transform: translateY(-50%); width: max-content; max-width: 190px; padding: 7px 9px; border-radius: 6px; color: #fff; background: #172033; box-shadow: 0 8px 20px rgba(15,23,42,.2); font-size: 11px; font-weight: 600; pointer-events: none; }
 }
 
 
@@ -538,6 +544,9 @@ h1, h2, h3, p { overflow-wrap: anywhere; }
 @media (max-width: 640px) {
   .auth-form-panel { padding: 18px; }.auth-card { padding: 25px; }.app-shell { grid-template-columns: 1fr; grid-template-rows: 72px 1fr; }.topbar { grid-template-columns: auto 1fr auto; height: 72px; }.global-search { height: 44px; }.global-search input { min-width: 0; }.topbar-actions { gap: 6px; }.app-build-marker { min-height: 24px; padding-inline: 6px; }.notification-button, .user-menu { display: none; }.sidebar { position: fixed; z-index: 30; left: 0; right: 0; bottom: 0; top: auto; width: 100%; height: 66px; flex-direction: row; padding: 6px 8px; border-right: 0; border-top: 1px solid var(--border); }.sidebar nav { width: 100%; grid-template-columns: repeat(5, 1fr); gap: 3px; }.nav-item { min-height: 52px; }.nav-item:nth-child(6) { display: none; }.nav-item.active::before { left: 20%; right: 20%; top: -6px; bottom: auto; width: auto; height: 3px; }.sidebar-footer { display: none; }.main-content { padding: 18px 12px 82px; }.page-heading { align-items: stretch; flex-direction: column; }.page-heading .btn { align-self: flex-start; }.page-heading h1 { font-size: 29px; }.filter-card { grid-template-columns: 1fr; }.search-input { grid-column: auto; }.filter-card .select-field:nth-of-type(3) { display: grid; }.insights-column { grid-template-columns: 1fr; }.data-table th:nth-child(2), .data-table td:nth-child(2), .data-table th:nth-child(3), .data-table td:nth-child(3), .data-table th:nth-child(6), .data-table td:nth-child(6) { display: none; }.workspace-header { padding: 20px 16px 22px; }.workspace-title-row { flex-direction: column; }.workspace-title-row h1 { font-size: 26px; }.workspace-stat-grid { grid-template-columns: 1fr; }.workspace-body { padding: 0 14px 82px; }.tabs { margin-inline: -14px; padding-inline: 14px; }.detail-list { grid-template-columns: 1fr; }.form-grid { grid-template-columns: 1fr; }.form-grid .wide { grid-column: auto; }.modal-card { padding: 20px; }
 }
+@media (max-width: 640px) {
+  .nav-item:hover::after, .nav-item:focus-visible::after { content: attr(data-tooltip); position: absolute; z-index: 90; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%); width: max-content; max-width: 150px; padding: 7px 9px; border-radius: 6px; color: #fff; background: #172033; box-shadow: 0 8px 20px rgba(15,23,42,.2); font-size: 10px; font-weight: 600; pointer-events: none; }
+}
 
 </style>
 </head>
@@ -548,8 +557,9 @@ const CONFIG = Object.freeze({
   supabaseUrl: "https://aegdytymgucgxxdgzsij.supabase.co",
   supabasePublishableKey: "sb_publishable_hYB33w3ZowZunNnnJv3OkQ_GbKe2OhE",
   appName: "MARGDARSHI",
-  officeName: "National Highway Division, Dhule",
-  buildLabel: "R5.8",
+  appExpansion: "Monitoring and Review Governance Dashboard for Administration, Reporting, Supervision, Highways and Infrastructure",
+  officeFallback: "Organisation workspace",
+  buildLabel: "R5.9",
 });
 
 const paths = {
@@ -1283,18 +1293,33 @@ function setButtonLoading(button, loading, label = "Please wait...") {
   }
 }
 
+function currentOfficeName() {
+  const profileOffice = String(state.profile?.office_name || "").trim();
+  if (profileOffice) return profileOffice;
+  const linkedOffice = state.offices.find((office) => office.id === state.profile?.office_id);
+  return String(linkedOffice?.name || linkedOffice?.office_name || "").trim() || CONFIG.officeFallback;
+}
+
+function dashboardGreeting(date = new Date()) {
+  const hour = date.getHours();
+  if (hour >= 5 && hour < 12) return "Good morning";
+  if (hour >= 12 && hour < 17) return "Good afternoon";
+  if (hour >= 17 && hour < 22) return "Good evening";
+  return "Hello";
+}
+
 function loginTemplate() {
   return `
     <main class="auth-page">
       <section class="auth-brand-panel">
         <div class="brand-lockup auth-brand">
-          <div class="emblem">NH</div>
-          <div><strong>${CONFIG.appName}</strong><span>National Highway Division, Dhule</span></div>
+          <div class="emblem">M</div>
+          <div><strong>${CONFIG.appName}</strong><span>Infrastructure Governance Platform</span></div>
         </div>
         <div class="auth-intro">
-          <p class="eyebrow">Digital National Highway Office</p>
+          <p class="eyebrow">Digital infrastructure governance</p>
           <h1>Project administration, correspondence and field monitoring—together.</h1>
-          <p>MARGDARSHI gives highway engineers a single, secure workspace for projects, actions, inspections, documents and review readiness.</p>
+          <p>MARGDARSHI gives infrastructure teams a single, secure workspace for projects, actions, inspections, documents and review readiness.</p>
           <div class="auth-feature-grid">
             <div>${icon("projects", 22)}<span>Project workspaces</span></div>
             <div>${icon("mail", 22)}<span>Action tracking</span></div>
@@ -1302,13 +1327,13 @@ function loginTemplate() {
             <div>${icon("reports", 22)}<span>Review reports</span></div>
           </div>
         </div>
-        <p class="auth-department">Public Works Department · National Highway Wing</p>
+        <p class="auth-department">Secure project delivery workspace</p>
       </section>
 
       <section class="auth-form-panel">
         <div class="auth-card">
           <div class="auth-card-heading">
-            <div class="mobile-brand"><div class="emblem">NH</div><strong>MARGDARSHI</strong></div>
+            <div class="mobile-brand"><div class="emblem">M</div><strong>MARGDARSHI</strong></div>
             <p class="eyebrow">Secure access</p>
             <h2>Welcome back</h2>
             <p>Sign in with your approved MARGDARSHI account.</p>
@@ -1328,6 +1353,11 @@ function loginTemplate() {
           <button class="btn secondary full" id="open-signup" type="button">Create an account</button>
           <button class="preview-link" id="preview-button" type="button">Preview the approved interface</button>
           <p class="auth-security">Access is protected by Supabase authentication and row-level security.</p>
+          <section class="auth-about" aria-labelledby="about-margdarshi-title">
+            <h3 id="about-margdarshi-title">About MARGDARSHI</h3>
+            <p>${CONFIG.appExpansion}.</p>
+            <p>A role-aware workspace for coordinated project delivery, accountable follow-up and evidence-based review.</p>
+          </section>
         </div>
       </section>
     </main>
@@ -1411,17 +1441,18 @@ function sidebar(active = "projects") {
     ["settings", "admin", "Administration"],
   ];
   return `<aside class="sidebar">
-    <nav>${items.map(([ic, key, label]) => `<button class="nav-item ${active === key ? "active" : ""}" data-nav="${key}">${icon(ic)}<span>${label}</span>${key === "admin" ? icon("arrow", 16) : ""}</button>`).join("")}</nav>
-    <div class="sidebar-footer"><div class="road-mark">NH</div><strong>National Highway Wing</strong><span>Building safer, better highways · Build ${CONFIG.buildLabel}</span></div>
+    <nav aria-label="Primary navigation">${items.map(([ic, key, label]) => `<button class="nav-item ${active === key ? "active" : ""}" data-nav="${key}" data-tooltip="${label}" aria-label="${label}" title="${label}">${icon(ic)}<span>${label}</span>${key === "admin" ? icon("arrow", 16) : ""}</button>`).join("")}</nav>
+    <div class="sidebar-footer"><div class="road-mark">M</div><strong>Infrastructure Governance</strong><span>Projects, actions and assurance · Build ${CONFIG.buildLabel}</span></div>
   </aside>`;
 }
 
 function appHeader() {
   const name = escapeHtml(state.profile?.full_name || "MARGDARSHI User");
   const designation = escapeHtml(state.profile?.designation || "Authorised User");
+  const officeName = escapeHtml(currentOfficeName());
   const initials = name.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
   return `<header class="topbar">
-    <div class="brand-lockup"><div class="emblem">NH</div><div><strong>MARGDARSHI</strong><span>National Highway Division Dhule</span></div></div>
+    <div class="brand-lockup"><div class="emblem">M</div><div><strong>MARGDARSHI</strong><span>${officeName}</span></div></div>
     <div class="global-search">${icon("search", 19)}<input id="global-search-input" aria-label="Global search" autocomplete="off" placeholder="Search projects, letters, actions, inspections..." /><kbd>Ctrl K</kbd><div id="global-search-results" class="global-search-results" hidden></div></div>
     <div class="topbar-actions"><span class="app-build-marker" aria-label="Current application build ${CONFIG.buildLabel}">Build ${CONFIG.buildLabel}</span><button class="notification-button" id="notification-button" aria-label="Notifications">${icon("bell")}<span class="${unreadNotificationCount() ? "" : "notification-zero"}">${unreadNotificationCount()}</span></button><div class="user-menu"><div class="avatar">${initials}</div><div><strong>${name}</strong><span>${designation}</span></div></div><button class="icon-button" id="logout-button" title="Sign out">${icon("logout")}</button></div>
   </header>`;
@@ -1481,7 +1512,7 @@ function projectRegisterTemplate() {
     <main class="main-content register-page">
       <section class="content-column">
         <div class="breadcrumb"><span>Dashboard</span><b>/</b>Project Register</div>
-        <div class="page-heading"><div><h1>Project Register</h1><p>View and manage projects under National Highway Division Dhule.</p></div>${canEdit ? `<button class="btn primary" id="add-project-button">${icon("plus")}Add Project</button>` : ""}</div>
+        <div class="page-heading"><div><h1>Project Register</h1><p>View and manage projects under ${escapeHtml(currentOfficeName())}.</p></div>${canEdit ? `<button class="btn primary" id="add-project-button">${icon("plus")}Add Project</button>` : ""}</div>
         <div class="filter-card">
           <div class="search-input">${icon("search", 18)}<input id="project-search" value="${escapeHtml(state.filters.query)}" placeholder="Search projects..." /></div>
           <label class="select-field"><span>Highway</span><select id="highway-filter"><option value="all">All</option>${highwayOptions.map((v) => `<option ${state.filters.highway === v ? "selected" : ""}>${escapeHtml(v)}</option>`).join("")}</select></label>
@@ -2104,7 +2135,7 @@ function bindCorrespondenceStatusButtons(onSaved) {
 function dashboardData(){const now=new Date();now.setHours(0,0,0,0);const week=new Date(now);week.setDate(week.getDate()+7);const projects=state.projects||[];const correspondence=state.correspondence||[];const actions=state.actionItems||[];const inspections=state.inspections||[];const events=state.calendarEvents||[];const openActions=actions.filter(a=>!["completed","cancelled"].includes(a.status));const overdue=openActions.filter(a=>a.due_date&&new Date(`${a.due_date}T00:00:00`)<now);return{projects,activeProjects:projects.filter(p=>!["completed","closed","cancelled"].includes(String(p.status||'').toLowerCase())),pendingCorrespondence:correspondence.filter(c=>!["closed","replied","disposed"].includes(String(c.status||'').toLowerCase())),openActions,overdue,openInspections:inspections.filter(i=>["open","under_compliance"].includes(i.status)),recentCorrespondence:[...correspondence].sort((a,b)=>new Date(b.created_at||b.letter_date)-new Date(a.created_at||a.letter_date)).slice(0,5),recentInspections:[...inspections].sort((a,b)=>new Date(b.updated_at||b.inspection_date)-new Date(a.updated_at||a.inspection_date)).slice(0,5),upcoming:events.filter(e=>{const d=new Date(e.start_date||e.event_date||e.start_time||e.date);return !isNaN(d)&&d>=now&&d<=week}).slice(0,6)};}
 function dashProject(id){const p=state.projects.find(x=>x.id===id);return p?.project_code||p?.project_name||'Project';}
 function dashDate(v){if(!v)return'—';const x=String(v).match(/^\d{4}-\d{2}-\d{2}/)?.[0]||v;return formatDate(x);}
-function dashboardTemplate(){const d=dashboardData();const actions=[...d.overdue,...d.openActions.filter(a=>!d.overdue.some(o=>o.id===a.id))].slice(0,6);const projects=[...d.projects].sort((a,b)=>Number(a.physical_progress_pct||0)-Number(b.physical_progress_pct||0)).slice(0,6);const list=(items,kind)=>items.length?`<div class="dashboard-list">${items.map(i=>{if(kind==='correspondence')return`<div class="dashboard-list-item" data-dashboard-route="#correspondence"><div><strong>${escapeHtml(i.subject||'Untitled correspondence')}</strong><span>${escapeHtml(i.letter_number||'No letter number')} · ${escapeHtml(dashProject(i.project_id))}</span></div><div class="right"><strong>${escapeHtml(correspondenceStatusLabel(i.status))}</strong><small>${dashDate(i.letter_date)}</small></div></div>`;if(kind==='inspection')return`<div class="dashboard-list-item" data-dashboard-route="#inspections"><div><strong>${escapeHtml((i.inspection_type||'general').replaceAll('_',' '))} · ${escapeHtml(chainageLabel(i))}</strong><span>${escapeHtml(dashProject(i.project_id))}</span></div><div class="right"><strong>${escapeHtml(inspectionStatusLabel(i.status))}</strong><small>${dashDate(i.inspection_date)}</small></div></div>`;return`<div class="dashboard-list-item" data-dashboard-route="#calendar"><div><strong>${escapeHtml(i.title||i.event_title||'Calendar event')}</strong><span>${escapeHtml(i.description||i.event_type||'Calendar')}</span></div><div class="right"><strong>${dashDate(i.start_date||i.event_date||i.start_time||i.date)}</strong></div></div>`;}).join('')}</div>`:`<div class="dashboard-empty">No records available.</div>`;return`<div class="app-shell">${appHeader()}${sidebar('dashboard')}<main class="main-content dashboard-page"><div class="breadcrumb"><span>Dashboard</span></div><div class="dashboard-hero"><div><h1>Good morning, ${escapeHtml((state.profile?.full_name||'User').split(' ')[0])}</h1><p>Live overview of National Highway Division Dhule.</p></div><div class="dashboard-actions"><button class="btn secondary" data-dashboard-route="#calendar">Open calendar</button><button class="btn primary" data-dashboard-route="#reports">Open reports</button></div></div><div class="dashboard-kpis"><div class="dashboard-kpi" data-dashboard-route="#projects"><span>Total projects</span><strong>${d.projects.length}</strong><small>${d.activeProjects.length} active/current</small></div><div class="dashboard-kpi" data-dashboard-route="#correspondence"><span>Pending correspondence</span><strong>${d.pendingCorrespondence.length}</strong><small>Open or awaiting disposal</small></div><div class="dashboard-kpi" data-dashboard-route="#actions"><span>Open actions</span><strong>${d.openActions.length}</strong><small>${d.overdue.length} overdue</small></div><div class="dashboard-kpi" data-dashboard-route="#inspections"><span>Open inspections</span><strong>${d.openInspections.length}</strong><small>Compliance/follow-up pending</small></div></div><div class="dashboard-grid"><section class="dashboard-card"><div class="dashboard-card-heading"><h2>Project progress</h2><span>${d.projects.length} projects</span></div>${projects.length?`<div class="dashboard-projects">${projects.map(p=>`<div class="dashboard-project-row" data-project-id="${p.id}"><header><div><strong>${escapeHtml(p.project_name)}</strong><span>${escapeHtml(p.project_code||'')} · ${escapeHtml(p.status||'—')}</span></div><strong>${Number(p.physical_progress_pct||0)}%</strong></header><div class="dashboard-progress"><i style="width:${Math.max(0,Math.min(100,Number(p.physical_progress_pct||0)))}%"></i></div></div>`).join('')}</div>`:`<div class="dashboard-empty">No projects available.</div>`}</section><section class="dashboard-card"><div class="dashboard-card-heading"><h2>Priority actions</h2><span>${d.overdue.length} overdue</span></div>${actions.length?`<div class="dashboard-list">${actions.map(a=>`<div class="dashboard-list-item" data-dashboard-route="#actions"><div><strong>${escapeHtml(a.title)}</strong><span>${escapeHtml(dashProject(a.project_id))}</span></div><div class="right"><strong>${escapeHtml(actionStatusLabel(a.status))}</strong><small>${a.due_date?'Due '+dashDate(a.due_date):'No due date'}</small></div></div>`).join('')}</div>`:`<div class="dashboard-empty">No open actions.</div>`}</section></div><div class="dashboard-grid"><section class="dashboard-card"><div class="dashboard-card-heading"><h2>Recent correspondence</h2><span>${d.pendingCorrespondence.length} pending</span></div>${list(d.recentCorrespondence,'correspondence')}</section><section class="dashboard-card"><div class="dashboard-card-heading"><h2>Upcoming 7 days</h2><span>${d.upcoming.length} items</span></div>${list(d.upcoming,'calendar')}</section></div><div class="dashboard-grid"><section class="dashboard-card"><div class="dashboard-card-heading"><h2>Recent inspections</h2><span>${d.openInspections.length} open</span></div>${list(d.recentInspections,'inspection')}</section><section class="dashboard-card"><div class="dashboard-card-heading"><h2>Quick links</h2><span>Common tasks</span></div><div class="quick-links">${[['#projects','Project Register','Open projects and packages'],['#correspondence','Correspondence','Incoming and outgoing letters'],['#actions','Action Tracking','Assignments and compliance'],['#inspections','Inspections','Site observations and photos'],['#calendar','Calendar','Milestones and reminders'],['#reports','Reports','Print and export summaries']].map(x=>`<button class="quick-link" data-dashboard-route="${x[0]}"><strong>${x[1]}</strong><span>${x[2]}</span></button>`).join('')}</div></section></div></main></div>`;}
+function dashboardTemplate(){const d=dashboardData();const actions=[...d.overdue,...d.openActions.filter(a=>!d.overdue.some(o=>o.id===a.id))].slice(0,6);const projects=[...d.projects].sort((a,b)=>Number(a.physical_progress_pct||0)-Number(b.physical_progress_pct||0)).slice(0,6);const list=(items,kind)=>items.length?`<div class="dashboard-list">${items.map(i=>{if(kind==='correspondence')return`<div class="dashboard-list-item" data-dashboard-route="#correspondence"><div><strong>${escapeHtml(i.subject||'Untitled correspondence')}</strong><span>${escapeHtml(i.letter_number||'No letter number')} · ${escapeHtml(dashProject(i.project_id))}</span></div><div class="right"><strong>${escapeHtml(correspondenceStatusLabel(i.status))}</strong><small>${dashDate(i.letter_date)}</small></div></div>`;if(kind==='inspection')return`<div class="dashboard-list-item" data-dashboard-route="#inspections"><div><strong>${escapeHtml((i.inspection_type||'general').replaceAll('_',' '))} · ${escapeHtml(chainageLabel(i))}</strong><span>${escapeHtml(dashProject(i.project_id))}</span></div><div class="right"><strong>${escapeHtml(inspectionStatusLabel(i.status))}</strong><small>${dashDate(i.inspection_date)}</small></div></div>`;return`<div class="dashboard-list-item" data-dashboard-route="#calendar"><div><strong>${escapeHtml(i.title||i.event_title||'Calendar event')}</strong><span>${escapeHtml(i.description||i.event_type||'Calendar')}</span></div><div class="right"><strong>${dashDate(i.start_date||i.event_date||i.start_time||i.date)}</strong></div></div>`;}).join('')}</div>`:`<div class="dashboard-empty">No records available.</div>`;return`<div class="app-shell">${appHeader()}${sidebar('dashboard')}<main class="main-content dashboard-page"><div class="breadcrumb"><span>Dashboard</span></div><div class="dashboard-hero"><div><h1>${dashboardGreeting()}, ${escapeHtml((state.profile?.full_name||'User').split(' ')[0])}</h1><p>Live overview of ${escapeHtml(currentOfficeName())}.</p></div><div class="dashboard-actions"><button class="btn secondary" data-dashboard-route="#calendar">Open calendar</button><button class="btn primary" data-dashboard-route="#reports">Open reports</button></div></div><div class="dashboard-kpis"><div class="dashboard-kpi" data-dashboard-route="#projects"><span>Total projects</span><strong>${d.projects.length}</strong><small>${d.activeProjects.length} active/current</small></div><div class="dashboard-kpi" data-dashboard-route="#correspondence"><span>Pending correspondence</span><strong>${d.pendingCorrespondence.length}</strong><small>Open or awaiting disposal</small></div><div class="dashboard-kpi" data-dashboard-route="#actions"><span>Open actions</span><strong>${d.openActions.length}</strong><small>${d.overdue.length} overdue</small></div><div class="dashboard-kpi" data-dashboard-route="#inspections"><span>Open inspections</span><strong>${d.openInspections.length}</strong><small>Compliance/follow-up pending</small></div></div><div class="dashboard-grid"><section class="dashboard-card"><div class="dashboard-card-heading"><h2>Project progress</h2><span>${d.projects.length} projects</span></div>${projects.length?`<div class="dashboard-projects">${projects.map(p=>`<div class="dashboard-project-row" data-project-id="${p.id}"><header><div><strong>${escapeHtml(p.project_name)}</strong><span>${escapeHtml(p.project_code||'')} · ${escapeHtml(p.status||'—')}</span></div><strong>${Number(p.physical_progress_pct||0)}%</strong></header><div class="dashboard-progress"><i style="width:${Math.max(0,Math.min(100,Number(p.physical_progress_pct||0)))}%"></i></div></div>`).join('')}</div>`:`<div class="dashboard-empty">No projects available.</div>`}</section><section class="dashboard-card"><div class="dashboard-card-heading"><h2>Priority actions</h2><span>${d.overdue.length} overdue</span></div>${actions.length?`<div class="dashboard-list">${actions.map(a=>`<div class="dashboard-list-item" data-dashboard-route="#actions"><div><strong>${escapeHtml(a.title)}</strong><span>${escapeHtml(dashProject(a.project_id))}</span></div><div class="right"><strong>${escapeHtml(actionStatusLabel(a.status))}</strong><small>${a.due_date?'Due '+dashDate(a.due_date):'No due date'}</small></div></div>`).join('')}</div>`:`<div class="dashboard-empty">No open actions.</div>`}</section></div><div class="dashboard-grid"><section class="dashboard-card"><div class="dashboard-card-heading"><h2>Recent correspondence</h2><span>${d.pendingCorrespondence.length} pending</span></div>${list(d.recentCorrespondence,'correspondence')}</section><section class="dashboard-card"><div class="dashboard-card-heading"><h2>Upcoming 7 days</h2><span>${d.upcoming.length} items</span></div>${list(d.upcoming,'calendar')}</section></div><div class="dashboard-grid"><section class="dashboard-card"><div class="dashboard-card-heading"><h2>Recent inspections</h2><span>${d.openInspections.length} open</span></div>${list(d.recentInspections,'inspection')}</section><section class="dashboard-card"><div class="dashboard-card-heading"><h2>Quick links</h2><span>Common tasks</span></div><div class="quick-links">${[['#projects','Project Register','Open projects and packages'],['#correspondence','Correspondence','Incoming and outgoing letters'],['#actions','Action Tracking','Assignments and compliance'],['#inspections','Inspections','Site observations and photos'],['#calendar','Calendar','Milestones and reminders'],['#reports','Reports','Print and export summaries']].map(x=>`<button class="quick-link" data-dashboard-route="${x[0]}"><strong>${x[1]}</strong><span>${x[2]}</span></button>`).join('')}</div></section></div></main></div>`;}
 async function renderDashboard(){root.innerHTML=`<div class="loading-screen"><span class="spinner dark"></span><p>Loading dashboard...</p></div>`;try{[state.correspondence,state.actionItems,state.actionAssignees,state.actionProgressUpdates,state.inspections,state.calendarEvents]=await Promise.all([getCorrespondence(),getActionItems(),getActionAssignees(),getActionProgressUpdates(),getInspections(),getCalendarEvents()]);root.innerHTML=dashboardTemplate();bindDashboardEvents();}catch(error){root.innerHTML=`<div class="loading-screen"><p>${escapeHtml(error.message)}</p></div>`;}}
 function bindDashboardActivation(element,activate){
   element.setAttribute("role","link");
