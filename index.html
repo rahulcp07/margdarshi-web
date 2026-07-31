@@ -549,7 +549,7 @@ const CONFIG = Object.freeze({
   supabasePublishableKey: "sb_publishable_hYB33w3ZowZunNnnJv3OkQ_GbKe2OhE",
   appName: "MARGDARSHI",
   officeName: "National Highway Division, Dhule",
-  buildLabel: "R5.7",
+  buildLabel: "R5.8",
 });
 
 const paths = {
@@ -1235,6 +1235,13 @@ function escapeHtml(value = "") {
 function formatDate(value) {
   if (!value) return "—";
   return new Intl.DateTimeFormat("en-IN", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
+}
+
+function formatDateTime(value) {
+  if (!value) return "—";
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+  }).format(new Date(value));
 }
 
 function formatMoneyCrore(value) {
@@ -2723,6 +2730,15 @@ function actionStatusLabel(status) {
   return ({ open: "Open", in_progress: "In Progress", awaiting_response: "Awaiting Response", completed: "Completed", cancelled: "Cancelled" })[status] || status || "Open";
 }
 
+const ACTION_STATUSES = [
+  ["open", "Open"], ["in_progress", "In Progress"], ["awaiting_response", "Awaiting Response"],
+  ["completed", "Completed"], ["cancelled", "Cancelled"],
+];
+
+const ACTION_PRIORITIES = [
+  ["normal", "Normal"], ["low", "Low"], ["high", "High"], ["urgent", "Urgent"],
+];
+
 function actionUserName(userId) {
   const user = state.assignableUsers.find((item) => item.id === userId);
   return user?.full_name || "Unknown user";
@@ -2796,7 +2812,20 @@ function canSubmitUpward(item){ return canControlAction(item) || state.profile?.
 function workflowHistory(item){
   const events=workflowEventsFor(item.id);
   if(!events.length) return "";
-  return `<div class="workflow-history">${events.map((event)=>`<div class="workflow-event"><strong>${escapeHtml(actionUserName(event.performed_by))}</strong> · ${escapeHtml(event.event_type.replaceAll("_"," "))}${event.to_stage?` → ${escapeHtml(workflowStageLabel(event.to_stage))}`:""}${event.on_behalf_of?` · On behalf of ${escapeHtml(actionUserName(event.on_behalf_of))}`:""}${event.remarks?`<div>${escapeHtml(event.remarks)}</div>`:""}${event.draft_text?`<div><strong>Draft/Report:</strong> ${escapeHtml(event.draft_text)}</div>`:""}<small>${formatDate(event.created_at)}</small></div>`).join("")}</div>`;
+  return `<div class="workflow-history">${events.map((event)=>`<div class="workflow-event"><strong>${escapeHtml(actionUserName(event.performed_by))}</strong> · ${escapeHtml(event.event_type.replaceAll("_"," "))}${event.to_stage?` → ${escapeHtml(workflowStageLabel(event.to_stage))}`:""}${event.on_behalf_of?` · On behalf of ${escapeHtml(actionUserName(event.on_behalf_of))}`:""}${event.remarks?`<div>${escapeHtml(event.remarks)}</div>`:""}${event.draft_text?`<div><strong>${event.event_type === "action_updated" ? "Changes" : "Draft/Report"}:</strong> ${escapeHtml(event.draft_text).replaceAll("\n", "<br>")}</div>`:""}<small>${formatDateTime(event.created_at)}</small></div>`).join("")}</div>`;
+}
+
+function currentClaimedProgress(item) {
+  const latest = actionUpdatesFor(item.id)[0];
+  if (!latest) return Number(item.progress_percent ?? item.verified_progress_percent ?? 0);
+  const claimedEdit = workflowEventsFor(item.id).find((event) =>
+    event.event_type === "action_updated" && event.draft_text?.includes("Claimed progress:")
+  );
+  const actionUpdatedAt = new Date(claimedEdit?.created_at || 0).getTime();
+  const progressSubmittedAt = new Date(latest.submitted_at || 0).getTime();
+  return actionUpdatedAt > progressSubmittedAt
+    ? Number(item.progress_percent ?? 0)
+    : Number(latest.claimed_progress_percent ?? 0);
 }
 
 function canVerifyAction(item) {
@@ -2842,12 +2871,7 @@ function actionList(items, showProject = true) {
         ${workflowHistory(item)}
       </div>
       <div class="action-side">
-        ${(() => {
-          const updates = actionUpdatesFor(item.id);
-          const latest = updates.length ? updates[0] : null;
-          const latestClaimed = latest ? Number(latest.claimed_progress_percent || 0) : Number(item.verified_progress_percent || 0);
-          return `<strong>Claimed: ${latestClaimed}% | Verified: ${Number(item.verified_progress_percent || 0)}%</strong>`;
-        })()}
+        <strong>Claimed: ${currentClaimedProgress(item)}% | Verified: ${Number(item.verified_progress_percent || 0)}%</strong>
         <span>Only verified progress is treated as official.</span>
         <button class="btn secondary view-action-details" type="button" data-action-id="${item.id}" aria-label="View details for ${escapeHtml(item.title)}">View details</button>
         ${canControlAction(item) ? `<button class="btn secondary edit-action-button" data-action-id="${item.id}">Edit instruction</button>` : ""}
@@ -2884,6 +2908,56 @@ function actionDialog(projectId = "") {
   </form></dialog>`;
 }
 
+
+function actionUpdateDialog(item) {
+  return `<dialog id="action-update-dialog" class="modal"><form id="action-update-form" class="modal-card" novalidate>
+    <div class="modal-heading"><div><p class="eyebrow">Action Detail</p><h2>Update Action</h2><p>Review the existing values and save only the fields that need to change.</p></div><button class="icon-button" type="button" data-dialog-close aria-label="Close update action dialog">${icon("close")}</button></div>
+    <div class="form-grid">
+      <label class="wide">Action title *<input id="action-update-title" required value="${escapeHtml(item.title || "")}" /></label>
+      <label class="wide">Description<textarea id="action-update-description" rows="3">${escapeHtml(item.description || "")}</textarea></label>
+      <label>Status *<select id="action-update-status" required>${ACTION_STATUSES.map(([value,label])=>`<option value="${value}" ${item.status===value?"selected":""}>${label}</option>`).join("")}</select></label>
+      <label>Priority *<select id="action-update-priority" required>${ACTION_PRIORITIES.map(([value,label])=>`<option value="${value}" ${item.priority===value?"selected":""}>${label}</option>`).join("")}</select></label>
+      <label>Due date<input id="action-update-due-date" type="date" value="${escapeHtml(item.due_date || "")}" /></label>
+      <label>Claimed progress (%)<input id="action-update-claimed" type="number" min="0" max="100" step="1" required value="${currentClaimedProgress(item)}" aria-describedby="action-update-progress-help" /></label>
+      <label>Verified progress (%)<input id="action-update-verified" type="number" min="0" max="100" step="1" required value="${Number(item.verified_progress_percent ?? 0)}" aria-describedby="action-update-progress-help" /></label>
+      <label class="wide">Remarks<textarea id="action-update-remarks" rows="3" placeholder="Administrative remarks">${escapeHtml(item.issuer_note || "")}</textarea></label>
+    </div>
+    <p id="action-update-progress-help" class="field-help">Claimed progress records the reported position. Verified progress remains the official position.</p>
+    <p id="action-update-error" class="form-error" role="alert"></p>
+    <div class="modal-actions"><button class="btn secondary" type="button" data-dialog-close>Cancel</button><button class="btn primary" id="action-update-save" type="submit">Save changes</button></div>
+  </form></dialog>`;
+}
+
+function validActionDate(value) {
+  if (!value) return true;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
+}
+
+function actionUpdateChanges(item, values) {
+  const fields = [
+    ["title", "Action title", item.title || "", values.title],
+    ["description", "Description", item.description || null, values.description],
+    ["status", "Status", item.status || "open", values.status],
+    ["priority", "Priority", item.priority || "normal", values.priority],
+    ["due_date", "Due date", item.due_date || null, values.due_date],
+    ["progress_percent", "Claimed progress", currentClaimedProgress(item), values.progress_percent],
+    ["verified_progress_percent", "Verified progress", Number(item.verified_progress_percent ?? 0), values.verified_progress_percent],
+    ["issuer_note", "Remarks", item.issuer_note || null, values.issuer_note],
+  ];
+  return fields.filter(([, , before, after]) => before !== after).map(([key,label,before,after]) => ({ key, label, before, after }));
+}
+
+function actionHistoryValue(change, value) {
+  if (value === null || value === "") return "Not set";
+  if (change.key === "status") return actionStatusLabel(value);
+  if (change.key === "priority") return ACTION_PRIORITIES.find(([key])=>key===value)?.[1] || value;
+  if (change.key === "due_date") return formatDate(value);
+  if (change.key.endsWith("progress_percent")) return `${value}%`;
+  return String(value);
+}
 
 function officeProcessDialog(){
   return `<dialog id="office-process-dialog" class="modal compact-modal"><form id="office-process-form" class="modal-card" novalidate>
@@ -3092,8 +3166,7 @@ function actionDetailTemplate(item) {
   const correspondence = state.correspondence.find((record) => record.id === item.correspondence_id);
   const assignees = actionAssigneesFor(item.id);
   const updates = actionUpdatesFor(item.id);
-  const latestUpdate = updates[0] || null;
-  const claimedProgress = latestUpdate ? Number(latestUpdate.claimed_progress_percent || 0) : Number(item.progress_percent || item.verified_progress_percent || 0);
+  const claimedProgress = currentClaimedProgress(item);
   const verifiedProgress = Number(item.verified_progress_percent || 0);
   const projectLabel = project?.project_code || project?.project_name || "Project unavailable";
   const canEdit = canControlAction(item);
@@ -3112,7 +3185,7 @@ function actionDetailTemplate(item) {
       <div class="action-detail-title-row">
         <div><h1>${escapeHtml(item.title)}</h1><p>${escapeHtml(item.description || "No detailed instruction has been recorded.")}</p></div>
         <div class="action-detail-actions">
-          ${canEdit ? `<button class="btn secondary edit-action-button" type="button" data-action-id="${item.id}">Edit instruction</button>` : ""}
+          ${canEdit ? `<button class="btn secondary update-action-button" type="button" data-action-id="${item.id}">Edit Action</button>` : ""}
           ${canSubmit ? `<button class="btn primary submit-progress-button" type="button" data-action-id="${item.id}">Submit progress</button>` : ""}
           ${canProcess ? `<button class="btn secondary process-office-action-button" type="button" data-action-id="${item.id}">Process / Forward</button>` : ""}
         </div>
@@ -3151,12 +3224,91 @@ function actionDetailTemplate(item) {
       <section class="action-detail-panel"><h2>Progress history</h2>${progressHistory(item) || `<div class="dashboard-empty">No progress updates recorded.</div>`}</section>
       <section class="action-detail-panel"><h2>Workflow history</h2>${workflowHistory(item) || `<div class="dashboard-empty">No workflow events recorded.</div>`}</section>
     </div>
-    ${actionDialog("")}${officeProcessDialog()}${progressDialog()}${verificationDialog()}
+    ${actionUpdateDialog(item)}${actionDialog("")}${officeProcessDialog()}${progressDialog()}${verificationDialog()}
   </main></div>`;
+}
+
+function bindActionUpdateEvents(item, onSaved) {
+  const dialog = document.querySelector("#action-update-dialog");
+  document.querySelector(".update-action-button")?.addEventListener("click", () => {
+    const current = state.actionItems.find((record) => record.id === item.id);
+    if (!current || !canControlAction(current)) {
+      showToast("You are not authorised to update this action.", "error");
+      return;
+    }
+    dialog?.showModal();
+  });
+  document.querySelector("#action-update-form")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const error = document.querySelector("#action-update-error");
+    const button = document.querySelector("#action-update-save");
+    error.textContent = "";
+    const current = state.actionItems.find((record) => record.id === item.id);
+    if (!current || !canControlAction(current)) {
+      error.textContent = "You are not authorised to update this action.";
+      return;
+    }
+    const title = document.querySelector("#action-update-title").value.trim();
+    const status = document.querySelector("#action-update-status").value;
+    const priority = document.querySelector("#action-update-priority").value;
+    const dueDateInput = document.querySelector("#action-update-due-date");
+    const claimedInput = document.querySelector("#action-update-claimed");
+    const verifiedInput = document.querySelector("#action-update-verified");
+    const dueDate = dueDateInput.value;
+    const claimed = Number(claimedInput.value);
+    const verified = Number(verifiedInput.value);
+    if (!title) { error.textContent = "Action title must not be blank."; return; }
+    if (!ACTION_STATUSES.some(([value])=>value===status)) { error.textContent = "Select a valid action status."; return; }
+    if (!ACTION_PRIORITIES.some(([value])=>value===priority)) { error.textContent = "Select a valid action priority."; return; }
+    if (!claimedInput.value || !Number.isInteger(claimed) || claimed < 0 || claimed > 100) { error.textContent = "Claimed progress must be a whole number between 0 and 100."; return; }
+    if (!verifiedInput.value || !Number.isInteger(verified) || verified < 0 || verified > 100) { error.textContent = "Verified progress must be a whole number between 0 and 100."; return; }
+    if (!dueDateInput.validity.valid || !validActionDate(dueDate)) { error.textContent = "Enter a valid due date."; return; }
+    const values = {
+      title,
+      description: document.querySelector("#action-update-description").value.trim() || null,
+      status,
+      priority,
+      due_date: dueDate || null,
+      progress_percent: claimed,
+      verified_progress_percent: verified,
+      issuer_note: document.querySelector("#action-update-remarks").value.trim() || null,
+    };
+    const changes = actionUpdateChanges(current, values);
+    if (!changes.length) { error.textContent = "No changes to save."; return; }
+    const confirmation = changes.map((change)=>`${change.label}: ${actionHistoryValue(change, change.before)} → ${actionHistoryValue(change, change.after)}`).join("\n");
+    if (!window.confirm(`Save these action changes?\n\n${confirmation}`)) return;
+    const payload = Object.fromEntries(changes.map((change)=>[change.key, change.after]));
+    setButtonLoading(button, true, "Saving...");
+    try {
+      const updated = await updateActionItem(current.id, payload);
+      if (!updated) throw new Error("The action could not be updated. It may be unavailable or you may not have permission.");
+      try {
+        await createActionWorkflowEvent({
+          action_id: current.id,
+          event_type: "action_updated",
+          from_stage: current.workflow_stage || null,
+          to_stage: current.workflow_stage || null,
+          remarks: `${changes.length} field${changes.length===1?"":"s"} updated`,
+          draft_text: confirmation,
+        });
+      } catch (historyError) {
+        throw new Error(`Action values were saved, but workflow history could not be recorded: ${historyError.message}`);
+      }
+      dialog.close();
+      showToast("Action updated successfully.");
+      await onSaved();
+    } catch (saveError) {
+      error.textContent = saveError.message || "The action could not be updated.";
+    } finally {
+      setButtonLoading(button, false);
+    }
+  });
 }
 
 function bindActionDetailEvents(item) {
   bindActionEvents(() => renderActionDetail(item.id));
+  bindActionUpdateEvents(item, () => renderActionDetail(item.id));
   document.querySelector("#action-detail-back")?.addEventListener("click", () => { location.hash = "#actions"; });
   document.querySelector(".action-detail-project")?.addEventListener("click", (event) => {
     location.hash = `#project/${event.currentTarget.dataset.projectId}`;
@@ -3354,6 +3506,8 @@ function bindActionEvents(onSaved) {
   document.querySelector("#action-form")?.addEventListener("submit", async (event)=>{
     event.preventDefault(); const form=event.currentTarget; if(!form.checkValidity()){form.reportValidity();return;}
     const id=document.querySelector("#action-id").value;
+    const existingAction=id?state.actionItems.find((item)=>item.id===id):null;
+    if(id && (!existingAction || !canControlAction(existingAction))){document.querySelector("#action-error").textContent="You are not authorised to update this action.";return;}
     const selected=[...document.querySelectorAll(".assignee-checkbox:checked")].map((box)=>({user_id:box.value,responsibility_type:document.querySelector(`.assignee-role[data-user-id="${box.value}"]`).value,responsibility_note:document.querySelector(`.assignee-note[data-user-id="${box.value}"]`).value.trim()||null}));
     if(!selected.length){document.querySelector("#action-error").textContent="Select at least one officer having project jurisdiction.";return;}
     if(selected.filter((item)=>item.responsibility_type==="lead").length!==1){document.querySelector("#action-error").textContent="Select exactly one lead officer.";return;}
