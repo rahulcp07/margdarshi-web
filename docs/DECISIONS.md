@@ -2,12 +2,15 @@
 
 This log records decisions observable in the current code or merged pull requests. It does not infer rationale that is absent from the repository.
 
-## D-001 — Keep the application self-contained
+## D-001 — Record the single-file R5.9 baseline before restructuring
 
-- Status: Implemented
+- Status: Baseline recorded; restructuring approved
 - Evidence: the R5.9 repository baseline contains `index.html` as the application source.
-- Decision: HTML, CSS, and JavaScript are delivered together in one file.
-- Unrecorded rationale: **To be confirmed by Rahul.**
+- Baseline: R5.9 delivers HTML, CSS, and JavaScript together in one file.
+- Decision: the single-file structure is not a permanent architecture constraint.
+- Decision: future modularization is approved and will be performed in a dedicated restructuring branch.
+- Constraint: restructuring must preserve existing functionality and complete full regression testing before new feature development resumes.
+- Release numbering: the restructuring task is an architecture/refactor task and will not use the R6.0 feature number; R6.0 remains reserved for the next functional release after restructuring.
 
 ## D-002 — Use browser-side Supabase integration
 

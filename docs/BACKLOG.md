@@ -22,7 +22,8 @@ This means the repository currently has no issue-backed backlog. It does not est
 | Deployment/hosting workflow | To be confirmed by Rahul. |
 | Supported browser policy | To be confirmed by Rahul. |
 | Future Supabase schema, RLS, storage, or RPC changes | To be confirmed by Rahul. |
-| Refactoring or modularization of `index.html` | To be confirmed by Rahul. |
+| Refactoring or modularization of `index.html` | Approved; next in sequence after documentation PR #7. Complete in a dedicated restructuring branch before new feature development, preserving existing functionality and completing full regression testing. This is an architecture/refactor task, not R6.0. |
+| R6.0 functional release | Reserved for the next functional release after restructuring; scope to be confirmed by Rahul. |
 
 ## Backlog entry rule
 
