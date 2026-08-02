@@ -1,5 +1,23 @@
+const CORRESPONDENCE_STATUS_OPTIONS = Object.freeze([
+  Object.freeze({ value: "open", label: "Open" }),
+  Object.freeze({ value: "in_progress", label: "In Progress" }),
+  Object.freeze({ value: "closed", label: "Closed" }),
+  Object.freeze({ value: "no_action", label: "No Action" }),
+]);
+const CORRESPONDENCE_STATUS_VALUES = new Set(CORRESPONDENCE_STATUS_OPTIONS.map(({ value }) => value));
+
+function normalizeCorrespondenceStatus(status) {
+  return CORRESPONDENCE_STATUS_VALUES.has(status) ? status : "open";
+}
+
+function nextCorrespondenceStatus(status) {
+  if (status === "open") return "in_progress";
+  if (status === "in_progress") return "closed";
+  return "open";
+}
+
 function correspondenceStatusLabel(status) {
-  return ({ open: "Open", under_review: "Under Review", replied: "Replied", closed: "Closed", no_action: "No Action" })[status] || status || "Open";
+  return CORRESPONDENCE_STATUS_OPTIONS.find(({ value }) => value === status)?.label || status || "Open";
 }
 
 function correspondenceList(records, projectMap = true) {
@@ -113,7 +131,7 @@ function correspondenceDialog(projectId = "") {
         <label class="wide">Reference details<textarea id="corr-reference" rows="2" placeholder="Previous letter/order/circular references"></textarea></label>
         <label class="wide">Action required<textarea id="corr-action" rows="2" placeholder="Action to be taken"></textarea></label>
         <label>Due date<input id="corr-due-date" type="date" /></label>
-        <label>Status<select id="corr-status"><option value="open">Open</option><option value="under_review">Under Review</option><option value="replied">Replied</option><option value="closed">Closed</option><option value="no_action">No Action</option></select></label>
+        <label>Status<select id="corr-status">${CORRESPONDENCE_STATUS_OPTIONS.map(({ value, label }) => `<option value="${value}">${label}</option>`).join("")}</select></label>
         <label class="wide">Attachment
           <input id="corr-attachment-file" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" />
           <span class="attachment-help">Optional. PDF, JPG, PNG or WEBP only; maximum 10 MB. Files are stored privately and require an approved login to open.</span>
@@ -193,7 +211,7 @@ function bindCorrespondenceDialogEvents(onSaved) {
         reference_details: value("#corr-reference"),
         action_required: value("#corr-action"),
         due_date: value("#corr-due-date"),
-        status: value("#corr-status") || "open",
+        status: normalizeCorrespondenceStatus(value("#corr-status")),
         remarks: value("#corr-remarks"),
       });
       const file = document.querySelector("#corr-attachment-file")?.files?.[0] || null;
@@ -228,7 +246,7 @@ function bindCorrespondenceStatusButtons(onSaved) {
   document.querySelectorAll(".edit-correspondence-button").forEach((button) => button.addEventListener("click", async () => {
     const record = state.correspondence.find((item) => item.id === button.dataset.id);
     if (!record) return;
-    const next = record.status === "open" ? "under_review" : record.status === "under_review" ? "replied" : record.status === "replied" ? "closed" : "open";
+    const next = nextCorrespondenceStatus(record.status);
     setButtonLoading(button, true, "Updating...");
     try {
       await updateCorrespondence(record.id, { status: next });
