@@ -2,20 +2,21 @@
 
 This log records decisions observable in the current code or merged pull requests. It does not infer rationale that is absent from the repository.
 
-## D-001 — Record the single-file R5.9 baseline before restructuring
+## D-001 — Preserve R5.9 behavior while modularizing the application
 
-- Status: Baseline recorded; restructuring approved
+- Status: Implemented on the architecture/refactor branch; pending review
 - Evidence: the R5.9 repository baseline contains `index.html` as the application source.
 - Baseline: R5.9 delivers HTML, CSS, and JavaScript together in one file.
 - Decision: the single-file structure is not a permanent architecture constraint.
-- Decision: future modularization is approved and will be performed in a dedicated restructuring branch.
+- Decision: modularization is performed in a dedicated restructuring branch with `index.html` as the document shell, `css/app.css` as the shared stylesheet, shared JavaScript under `js/`, and feature files under `js/modules/`.
+- Decision: ordered classic scripts retain the existing browser-global execution model; conversion to native ES modules or a build tool is outside this refactor.
 - Constraint: restructuring must preserve existing functionality and complete full regression testing before new feature development resumes.
 - Release numbering: the restructuring task is an architecture/refactor task and will not use the R6.0 feature number; R6.0 remains reserved for the next functional release after restructuring.
 
 ## D-002 — Use browser-side Supabase integration
 
 - Status: Implemented
-- Evidence: `index.html` calls Supabase Auth, REST, and Storage endpoints using the shared configuration, publishable key, and authenticated bearer token.
+- Evidence: `js/api.js` calls Supabase Auth, REST, and Storage endpoints using the shared configuration, publishable key, and authenticated bearer token.
 - Decision: the current client accesses existing Supabase services directly.
 - Database provisioning and migration process: **To be confirmed by Rahul.**
 
@@ -73,7 +74,7 @@ This log records decisions observable in the current code or merged pull request
 ## D-010 — Use local browser time for the dashboard greeting
 
 - Status: Implemented in R5.9
-- Evidence: `dashboardGreeting(new Date())` in `index.html`.
+- Evidence: `dashboardGreeting(new Date())` in `js/app.js`, rendered by `js/modules/dashboard.js`.
 - Boundaries:
   - 05:00–11:59: Good morning
   - 12:00–16:59: Good afternoon

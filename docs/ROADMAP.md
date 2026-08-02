@@ -13,10 +13,10 @@ The repository confirms this completed sequence:
 
 ## Approved next technical task — application restructuring
 
-- Status: Approved
+- Status: Implemented on the dedicated architecture/refactor branch; pending review and regression approval
 - Classification: Architecture/refactor task; not a functional release
 - Sequence: Begin after documentation PR #7 is reviewed and merged.
-- Scope: Split and modularize the R5.9 single-file `index.html` implementation in a dedicated restructuring branch.
+- Scope: Split and modularize the R5.9 single-file `index.html` implementation in a dedicated restructuring branch. The resulting structure is recorded in [ARCHITECTURE.md](ARCHITECTURE.md).
 - Compatibility requirement: Preserve all existing R5.9 functionality and permissions.
 - Validation requirement: Complete full regression testing before the restructuring task is considered complete.
 - Delivery gate: Complete restructuring before new feature development begins.
