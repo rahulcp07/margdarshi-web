@@ -8,13 +8,17 @@
 - Application source at that commit: `index.html`
 - Application name expansion: **Monitoring Administration of Road Governance, Development And Reporting System for Highway Infrastructure**
 
-The build number and expansion are defined in the shared `CONFIG` object in `index.html`.
+The build number and expansion are defined in the shared `CONFIG` object. On the modular architecture branch, that object is located in `js/config.js`.
 
 ## Repository shape
 
-At the R5.9 baseline, the tracked application consists of one self-contained HTML file with embedded CSS and JavaScript. It connects directly from the browser to Supabase Auth, REST, and Storage endpoints using a publishable key and the authenticated user's bearer token.
+At the stable R5.9 commit, the tracked application consists of one self-contained HTML file with embedded CSS and JavaScript.
 
-No package manifest, build tool configuration, automated test directory, GitHub Actions workflow, or database migration directory is present at the R5.9 commit.
+The post-R5.9 architecture/refactor branch preserves the same browser application while extracting the document shell to `index.html`, shared styles to `css/app.css`, shared configuration/data access/application/router responsibilities to `js/`, and feature responsibilities to `js/modules/`. See [ARCHITECTURE.md](ARCHITECTURE.md).
+
+The modular application continues to connect directly from the browser to Supabase Auth, REST, and Storage endpoints using the existing publishable key and the authenticated user's bearer token.
+
+No package manifest, build tool configuration, automated test directory, GitHub Actions workflow, or database migration directory is introduced by the architecture/refactor branch.
 
 ## Shipped application areas
 
