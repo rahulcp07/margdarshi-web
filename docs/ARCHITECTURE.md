@@ -2,7 +2,7 @@
 
 ## Architecture baseline
 
-This document records the modular application structure introduced by the post-R5.9 architecture/refactor branch. The refactor retains the **R5.9** build identity and does not introduce a functional release.
+This document records the modular application structure merged to `main` in pull request [#8](https://github.com/rahulcp07/margdarshi-web/pull/8). The refactor retains the **R5.9** build identity and does not introduce a functional release.
 
 MARGDARSHI remains a browser-delivered static application with no package build step. `index.html` provides the document shell and loads one shared stylesheet followed by ordered classic JavaScript files. Existing browser-global bindings are retained so the refactor does not change route, event, permission, authentication, or data-access behavior.
 
@@ -64,6 +64,8 @@ This ordered classic-script contract is deliberate for the current refactor. Con
 The refactor moves the existing browser-side Supabase integration into `js/api.js` without changing request paths, tables, columns, buckets, authentication flows, payloads, permission predicates, schema, policies, storage configuration, RPCs, or data.
 
 Application-level role and record checks remain in their existing feature modules. Database-enforced authorization continues to depend on the existing Supabase configuration.
+
+R6.0-A documents the current access-control boundary without changing it. See the [access-control specification](R6.0-ACCESS-CONTROL-SPEC.md) and [existing schema audit](R6.0-SCHEMA-AUDIT.md).
 
 ## Routing contract
 

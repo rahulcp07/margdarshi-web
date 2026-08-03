@@ -4,21 +4,32 @@
 
 - Stable build: **R5.9**
 - Stable branch: `main`
-- Stable commit: `aff7bc0c5523c94e66542ca5affc97036f786a9f`
-- Application source at that commit: `index.html`
+- Current main commit: `0bff033a9ce24dd0936cb998c5c3aaaacb037697`
+- R5.9 functional-release commit: `aff7bc0c5523c94e66542ca5affc97036f786a9f`
+- Application source: `index.html`, `css/app.css`, `js/`, and `js/modules/`
 - Application name expansion: **Monitoring Administration of Road Governance, Development And Reporting System for Highway Infrastructure**
 
 The build number and expansion are defined in the shared `CONFIG` object. On the modular architecture branch, that object is located in `js/config.js`.
 
 ## Repository shape
 
-At the stable R5.9 commit, the tracked application consists of one self-contained HTML file with embedded CSS and JavaScript.
-
-The post-R5.9 architecture/refactor branch preserves the same browser application while extracting the document shell to `index.html`, shared styles to `css/app.css`, shared configuration/data access/application/router responsibilities to `js/`, and feature responsibilities to `js/modules/`. See [ARCHITECTURE.md](ARCHITECTURE.md).
+R5.9 was originally delivered as one self-contained HTML file. The post-R5.9 architecture/refactor was subsequently merged to `main` in pull request [#8](https://github.com/rahulcp07/margdarshi-web/pull/8), preserving the R5.9 build identity while extracting the document shell to `index.html`, shared styles to `css/app.css`, shared configuration/data access/application/router responsibilities to `js/`, and feature responsibilities to `js/modules/`. See [ARCHITECTURE.md](ARCHITECTURE.md).
 
 The modular application continues to connect directly from the browser to Supabase Auth, REST, and Storage endpoints using the existing publishable key and the authenticated user's bearer token.
 
-No package manifest, build tool configuration, automated test directory, GitHub Actions workflow, or database migration directory is introduced by the architecture/refactor branch.
+No package manifest, build tool configuration, GitHub Actions workflow, or database migration directory is present. The modular baseline includes a focused correspondence-status regression test under `tests/`.
+
+## Current design phase
+
+**R6.0-A — Access-Control Design and Existing Schema Audit** is a documentation/audit phase only. It records the existing schema, RLS policies, helper functions, module filtering, proposed access model, gaps, migration risks, and recommended R6.0-B onward sequence.
+
+R6.0-A does not change application behavior, Supabase schema, RLS policies, Storage, RPCs, or production data. See:
+
+- [R6.0 Access-Control Specification](R6.0-ACCESS-CONTROL-SPEC.md)
+- [R6.0 Schema Audit](R6.0-SCHEMA-AUDIT.md)
+- [R6.0 Gap Analysis](R6.0-GAP-ANALYSIS.md)
+- [R6.0 Migration Risks](R6.0-MIGRATION-RISKS.md)
+- [R6.0 Implementation Plan](R6.0-IMPLEMENTATION-PLAN.md)
 
 ## Shipped application areas
 

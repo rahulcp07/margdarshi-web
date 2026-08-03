@@ -51,6 +51,23 @@ This worklog summarizes repository-visible delivery records. It does not reprodu
 - Final greeting boundaries in code: morning 05:00–11:59, afternoon 12:00–16:59, evening 17:00–20:59, and night 21:00–04:59.
 - PR-recorded validation: JavaScript syntax, HTML structure, `git diff --check`, greeting boundaries, dynamic office fallback, login/signup/password controls, tooltips, module navigation, responsive layouts, and R5.8 smoke regression.
 
+## Post-R5.9 architecture and correspondence correction
+
+- Documentation pull request: [#7](https://github.com/rahulcp07/margdarshi-web/pull/7)
+- Architecture pull request: [#8 — Modularize MARGDARSHI Application Architecture](https://github.com/rahulcp07/margdarshi-web/pull/8)
+- Architecture main commit: `0bff033a9ce24dd0936cb998c5c3aaaacb037697`
+- Correspondence correction pull request: [#9](https://github.com/rahulcp07/margdarshi-web/pull/9), merged into the architecture branch before PR #8 reached `main`
+- Repository-visible result: modular HTML/CSS/JavaScript structure preserving the R5.9 build identity, plus supported correspondence status values and focused regression checks.
+
+## R6.0-A — Access-Control Design and Existing Schema Audit
+
+- Classification: documentation/audit phase only
+- Branch: `codex/r6.0-a-access-control-audit`
+- Repository-visible scope: access-control specification, schema/policy audit, gap analysis, migration risks, and recommended R6.0-B onward plan.
+- Evidence: repository code and documentation plus read-only Supabase catalog, policy, function, trigger, migration, Storage, aggregate completeness, and Security Advisor metadata.
+- Explicit exclusions: application code, schema, RLS, Storage, RPC, and production-data changes.
+- Unverified matters are marked **To be confirmed by Rahul**.
+
 ## Earlier repository history
 
 Commits before R5.5 record the initial single-file application and incremental work on authentication, signup/OTP, user administration, correspondence, attachments, actions, notifications, calendar, workflow processing, inspections, reports, dashboard, project workspaces, global search, and exact-record navigation. Those commits do not use the R5.5–R5.9 release naming convention.

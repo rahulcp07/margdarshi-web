@@ -4,7 +4,7 @@ This log records decisions observable in the current code or merged pull request
 
 ## D-001 — Preserve R5.9 behavior while modularizing the application
 
-- Status: Implemented on the architecture/refactor branch; pending review
+- Status: Implemented and merged in pull request [#8](https://github.com/rahulcp07/margdarshi-web/pull/8)
 - Evidence: the R5.9 repository baseline contains `index.html` as the application source.
 - Baseline: R5.9 delivers HTML, CSS, and JavaScript together in one file.
 - Decision: the single-file structure is not a permanent architecture constraint.
@@ -80,3 +80,12 @@ This log records decisions observable in the current code or merged pull request
   - 12:00–16:59: Good afternoon
   - 17:00–20:59: Good evening
   - 21:00–04:59: Good night
+
+## D-011 — Treat R6.0-A as audit and design only
+
+- Status: Approved documentation phase; implementation pending later review
+- Decision: R6.0-A records the current schema, policies, functions, module filtering, proposed access model, gaps, migration risks, and implementation sequence.
+- Decision: R6.0-A does not modify application behavior, Supabase schema, RLS policies, Storage, RPCs, or production data.
+- Decision: Unverified information is marked **To be confirmed by Rahul** rather than inferred.
+- Decision: Schema, policy, data, Storage, and application enforcement work begins only in separately reviewed R6.0-B onward phases.
+- Evidence: [R6.0 Access-Control Specification](R6.0-ACCESS-CONTROL-SPEC.md), [Schema Audit](R6.0-SCHEMA-AUDIT.md), [Gap Analysis](R6.0-GAP-ANALYSIS.md), [Migration Risks](R6.0-MIGRATION-RISKS.md), and [Implementation Plan](R6.0-IMPLEMENTATION-PLAN.md).

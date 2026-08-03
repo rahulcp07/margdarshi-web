@@ -2,7 +2,7 @@
 
 ## Repository-tracked backlog
 
-As checked on 2026-08-02:
+As checked on 2026-08-03:
 
 - GitHub issues: none returned for the repository.
 - Open pull requests: none returned for the repository.
@@ -14,16 +14,17 @@ This means the repository currently has no issue-backed backlog. It does not est
 
 | Item | Repository status |
 | --- | --- |
-| Next release number and scope | To be confirmed by Rahul. |
-| Known defects found after R5.9 | To be confirmed by Rahul. |
-| Final logo or permanent brand assets | To be confirmed by Rahul. |
-| Highway slideshow or login imagery | To be confirmed by Rahul. |
-| Automated CI and persistent browser regression suite | To be confirmed by Rahul. |
-| Deployment/hosting workflow | To be confirmed by Rahul. |
-| Supported browser policy | To be confirmed by Rahul. |
-| Future Supabase schema, RLS, storage, or RPC changes | To be confirmed by Rahul. |
-| Refactoring or modularization of `index.html` | Approved; next in sequence after documentation PR #7. Complete in a dedicated restructuring branch before new feature development, preserving existing functionality and completing full regression testing. This is an architecture/refactor task, not R6.0. |
-| R6.0 functional release | Reserved for the next functional release after restructuring; scope to be confirmed by Rahul. |
+| Next release number and scope | **To be confirmed by Rahul.** |
+| Known defects found after R5.9 | **To be confirmed by Rahul.** |
+| Final logo or permanent brand assets | **To be confirmed by Rahul.** |
+| Highway slideshow or login imagery | **To be confirmed by Rahul.** |
+| Automated CI and persistent browser regression suite | **To be confirmed by Rahul.** |
+| Deployment/hosting workflow | **To be confirmed by Rahul.** |
+| Supported browser policy | **To be confirmed by Rahul.** |
+| R5.9 modular architecture | Completed and merged in PR #8 without changing the R5.9 build identity. |
+| R6.0-A access-control audit/design | Approved documentation-only phase; record evidence, gaps, risks, and sequence without application or Supabase changes. |
+| R6.0-B onward implementation | Begin only after R6.0-A review and unresolved access-model decisions; follow [R6.0-IMPLEMENTATION-PLAN.md](R6.0-IMPLEMENTATION-PLAN.md). |
+| Future schema, RLS, Storage, RPC, and data migrations | Require dedicated reviewed implementation phases; exact designs not verified in R6.0-A are **To be confirmed by Rahul.** |
 
 ## Backlog entry rule
 
