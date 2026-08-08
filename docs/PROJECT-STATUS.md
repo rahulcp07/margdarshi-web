@@ -30,6 +30,7 @@ R6.0-A does not change application behavior, Supabase schema, RLS policies, Stor
 - [R6.0 Gap Analysis](R6.0-GAP-ANALYSIS.md)
 - [R6.0 Migration Risks](R6.0-MIGRATION-RISKS.md)
 - [R6.0 Implementation Plan](R6.0-IMPLEMENTATION-PLAN.md)
+- [R6.0 Rahul Decision Checklist](R6.0-RAHUL-DECISION-CHECKLIST.md) — all 25 product decisions completed; implementation pending separately reviewed phases
 
 ## Shipped application areas
 
@@ -77,6 +78,6 @@ Repository code and merged PRs verify the following:
 ## Repository-backed status limits
 
 - Production hosting target and deployment procedure: **To be confirmed by Rahul.**
-- Supported browser/version matrix: **To be confirmed by Rahul.**
-- Formal product owner, release approver, and support contacts: **To be confirmed by Rahul.**
+- Supported browser/version matrix: Chrome and Microsoft Edge current stable plus one prior major version on supported Windows desktop, with responsive viewport coverage, approved for R6.0 by checklist Decision 23.
+- Product owner: Rahul Potdar is the initial Product Owner and business-rule authority under checklist Decision 24; technical/security reviewers, Release Approver, support contact, Database Owner, Deployment Owner, and Rollback Authority remain rollout-gated inputs to be named before production.
 - Any requirements maintained outside this repository: **To be confirmed by Rahul.**

@@ -20,15 +20,16 @@ The repository confirms this completed sequence:
 
 ## R6.0-A — access-control design and existing schema audit
 
-- Status: Documentation/design phase under review
+- Status: Documentation/design and 25 product decisions completed; pending PR review closure
 - Classification: Audit and design only; not an implementation release
 - Scope: Record current tables, relationships, assignments, roles, RLS, functions, module filtering, gaps, migration risks, and the recommended R6.0-B onward sequence.
 - Constraint: No application, schema, RLS, Storage, RPC, or production-data changes in R6.0-A.
 - Evidence rule: Unverified matters are marked **To be confirmed by Rahul**.
+- Decision baseline: [R6.0 Rahul Decision Checklist](R6.0-RAHUL-DECISION-CHECKLIST.md), including closure-review reconciliation notes.
 
 ## R6.0-B onward
 
-- Sequence: Begin only after R6.0-A review and the required access-model decisions.
+- Sequence: Begin only after R6.0-A review closes; the required access-model decisions are complete.
 - Recommended phases: test/migration foundation, canonical contexts, project-scope helpers, scoped RLS, action hierarchy, Storage enforcement, module adoption, and controlled rollout.
 - Detailed plan: [R6.0 Implementation Plan](R6.0-IMPLEMENTATION-PLAN.md)
 - Target dates and required reviewers: **To be confirmed by Rahul.**
@@ -39,8 +40,8 @@ The repository does not establish an approved plan for the following areas:
 
 - final product logo or brand asset: **To be confirmed by Rahul.**
 - highway slideshow or other login imagery: **To be confirmed by Rahul.**
-- automated CI/browser test infrastructure: **To be confirmed by Rahul.**
+- automated CI/browser test infrastructure: approved as an R6.0 implementation requirement by checklist Decision 23; not yet implemented.
 - deployment automation and hosting environment: **To be confirmed by Rahul.**
-- implementation details not resolved by the R6.0-A audit: **To be confirmed by Rahul.**
+- phase-specific schema, policy, application, and rollout designs: to be produced and reviewed in R6.0-B onward under checklist Decisions 18–24; not implemented by R6.0-A.
 
 No item in this section should be treated as approved scope until it is backed by a repository issue, decision record, or reviewed pull request.

@@ -67,6 +67,7 @@ This worklog summarizes repository-visible delivery records. It does not reprodu
 - Evidence: repository code and documentation plus read-only Supabase catalog, policy, function, trigger, migration, Storage, aggregate completeness, and Security Advisor metadata.
 - Explicit exclusions: application code, schema, RLS, Storage, RPC, and production-data changes.
 - Unverified matters are marked **To be confirmed by Rahul**.
+- Closure input: Rahul completed all 25 product decisions in `R6.0-RAHUL-DECISION-CHECKLIST.md`; the checklist remains documentation-only and does not implement the target policy.
 
 ## Earlier repository history
 

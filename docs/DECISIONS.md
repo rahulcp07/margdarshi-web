@@ -18,7 +18,7 @@ This log records decisions observable in the current code or merged pull request
 - Status: Implemented
 - Evidence: `js/api.js` calls Supabase Auth, REST, and Storage endpoints using the shared configuration, publishable key, and authenticated bearer token.
 - Decision: the current client accesses existing Supabase services directly.
-- Database provisioning and migration process: **To be confirmed by Rahul.**
+- R6.0 target process: repository-tracked, reviewed Supabase migrations become the future source of truth, with live-schema reconciliation, additive compatibility, non-production rehearsal, and rollback evidence as approved in [Rahul Decision Checklist Decision 20](R6.0-RAHUL-DECISION-CHECKLIST.md). This records policy only and does not change the current database.
 
 ## D-003 — Use hash-based application routing
 
@@ -89,3 +89,10 @@ This log records decisions observable in the current code or merged pull request
 - Decision: Unverified information is marked **To be confirmed by Rahul** rather than inferred.
 - Decision: Schema, policy, data, Storage, and application enforcement work begins only in separately reviewed R6.0-B onward phases.
 - Evidence: [R6.0 Access-Control Specification](R6.0-ACCESS-CONTROL-SPEC.md), [Schema Audit](R6.0-SCHEMA-AUDIT.md), [Gap Analysis](R6.0-GAP-ANALYSIS.md), [Migration Risks](R6.0-MIGRATION-RISKS.md), and [Implementation Plan](R6.0-IMPLEMENTATION-PLAN.md).
+
+## D-012 — Adopt the completed R6.0 access-control product decisions
+
+- Status: Product decisions completed; implementation not started
+- Decision: The 25 answers in the [R6.0 Rahul Decision Checklist](R6.0-RAHUL-DECISION-CHECKLIST.md), together with its closure-review reconciliation notes, are the approved R6.0 target-policy baseline.
+- Decision: Current audited schema and application behavior remain unchanged until separately reviewed R6.0-B onward phases implement and test the approved policy.
+- Decision: Production inputs intentionally gated by the checklist—such as named rollout owners, hosting facts, maintenance window, retention duration, dates, and final public build label—must be recorded before their applicable rollout gate; they are not blank R6.0-A product decisions.
