@@ -34,6 +34,12 @@ The repository confirms this completed sequence:
 - Detailed plan: [R6.0 Implementation Plan](R6.0-IMPLEMENTATION-PLAN.md)
 - Target dates and required reviewers: **To be confirmed by Rahul.**
 
+## Confirmed post-R6.0 product direction
+
+The [Product Direction Addendum](PRODUCT-DIRECTION-ADDENDUM.md) records an assistance-first direction and proposed future workstreams for a Project Digital Knowledge Base, Standards & References, AI-assisted drafting and research, office templates, Legal & Court Cases, AI Format Filler, and Ask MARGDARSHI.
+
+These are **post-R6.0 functional capabilities unless an implementation dependency is later approved**. R6.0 remains the prerequisite authorization and security foundation. No final public release number or implementation date is assigned, and no R6.0-B or feature implementation is started by the addendum.
+
 ## Unrecovered or uncommitted ideas
 
 The repository does not establish an approved plan for the following areas:

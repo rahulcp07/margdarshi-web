@@ -32,6 +32,12 @@ R6.0-A does not change application behavior, Supabase schema, RLS policies, Stor
 - [R6.0 Implementation Plan](R6.0-IMPLEMENTATION-PLAN.md)
 - [R6.0 Rahul Decision Checklist](R6.0-RAHUL-DECISION-CHECKLIST.md) — all 25 product decisions completed; implementation pending separately reviewed phases
 
+## Confirmed future product direction
+
+The [MARGDARSHI Product Direction Addendum](PRODUCT-DIRECTION-ADDENDUM.md) records the assistance-first product principle and confirmed post-R6.0 direction for a Project Digital Knowledge Base, Standards & References, AI Drafting Workspace, Internal and Deep Research, office templates, Legal & Court Cases, AI Format Filler, and Ask MARGDARSHI.
+
+These capabilities are **post-R6.0 functional capabilities unless an implementation dependency is later approved**. R6.0 remains the prerequisite authorization and security foundation. The addendum assigns no final public release number or implementation date and does not start R6.0-B.
+
 ## Shipped application areas
 
 The current hash router and shared sidebar expose these areas:
