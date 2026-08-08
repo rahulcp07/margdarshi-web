@@ -25,6 +25,7 @@ This means the repository currently has no issue-backed backlog. It does not est
 | R6.0-A access-control audit/design | Approved documentation-only phase; record evidence, gaps, risks, and sequence without application or Supabase changes. |
 | R6.0-B onward implementation | Begin only after R6.0-A review closes; use the completed [Rahul Decision Checklist](R6.0-RAHUL-DECISION-CHECKLIST.md) and follow [R6.0-IMPLEMENTATION-PLAN.md](R6.0-IMPLEMENTATION-PLAN.md). |
 | Future schema, RLS, Storage, RPC, and data migrations | Require dedicated reviewed implementation phases; exact designs not verified in R6.0-A are **To be confirmed by Rahul.** |
+| Post-R6.0 product capabilities | Confirmed direction is recorded in the [Product Direction Addendum](PRODUCT-DIRECTION-ADDENDUM.md). It covers the Project Digital Knowledge Base, Standards & References, AI Drafting Workspace, Internal and Deep Research, office templates, Legal & Court Cases, AI Format Filler, and Ask MARGDARSHI. No final release number or date is assigned. |
 
 ## Backlog entry rule
 
