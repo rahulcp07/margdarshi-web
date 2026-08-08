@@ -11,24 +11,28 @@ The repository confirms this completed sequence:
 5. **R5.8 — Action Editing and Status Update**: authorized detail-page editing, validation, confirmation, feedback, and workflow-history recording using existing data structures.
 6. **R5.9 — Dashboard Branding and Login UX**: local-time greetings, organisation-neutral product branding, approved name expansion, dynamic office labeling, accessible collapsed-sidebar tooltips, and an accessible login About section.
 
-## Approved next technical task — application restructuring
+## Completed technical task — application restructuring
 
-- Status: Implemented on the dedicated architecture/refactor branch; pending review and regression approval
+- Status: Merged to `main` in pull request [#8](https://github.com/rahulcp07/margdarshi-web/pull/8)
+- Main commit: `0bff033a9ce24dd0936cb998c5c3aaaacb037697`
 - Classification: Architecture/refactor task; not a functional release
-- Sequence: Begin after documentation PR #7 is reviewed and merged.
-- Scope: Split and modularize the R5.9 single-file `index.html` implementation in a dedicated restructuring branch. The resulting structure is recorded in [ARCHITECTURE.md](ARCHITECTURE.md).
-- Compatibility requirement: Preserve all existing R5.9 functionality and permissions.
-- Validation requirement: Complete full regression testing before the restructuring task is considered complete.
-- Delivery gate: Complete restructuring before new feature development begins.
-- Versioning: Do not assign R6.0 to this task. R6.0 is reserved for the next functional release after restructuring.
+- Result: The R5.9 application is modularized as recorded in [ARCHITECTURE.md](ARCHITECTURE.md), with existing behavior and build identity preserved.
 
-## Next functional release
+## R6.0-A — access-control design and existing schema audit
 
-- Reserved release number: **R6.0**
-- Sequence: after the approved architecture/refactor task is complete
-- Functional scope and acceptance criteria: **To be confirmed by Rahul.**
-- Target date: **To be confirmed by Rahul.**
-- Required reviewers: **To be confirmed by Rahul.**
+- Status: Documentation/design and 25 product decisions completed; pending PR review closure
+- Classification: Audit and design only; not an implementation release
+- Scope: Record current tables, relationships, assignments, roles, RLS, functions, module filtering, gaps, migration risks, and the recommended R6.0-B onward sequence.
+- Constraint: No application, schema, RLS, Storage, RPC, or production-data changes in R6.0-A.
+- Evidence rule: Unverified matters are marked **To be confirmed by Rahul**.
+- Decision baseline: [R6.0 Rahul Decision Checklist](R6.0-RAHUL-DECISION-CHECKLIST.md), including closure-review reconciliation notes.
+
+## R6.0-B onward
+
+- Sequence: Begin only after R6.0-A review closes; the required access-model decisions are complete.
+- Recommended phases: test/migration foundation, canonical contexts, project-scope helpers, scoped RLS, action hierarchy, Storage enforcement, module adoption, and controlled rollout.
+- Detailed plan: [R6.0 Implementation Plan](R6.0-IMPLEMENTATION-PLAN.md)
+- Target dates and required reviewers: **To be confirmed by Rahul.**
 
 ## Unrecovered or uncommitted ideas
 
@@ -36,8 +40,8 @@ The repository does not establish an approved plan for the following areas:
 
 - final product logo or brand asset: **To be confirmed by Rahul.**
 - highway slideshow or other login imagery: **To be confirmed by Rahul.**
-- automated CI/browser test infrastructure: **To be confirmed by Rahul.**
+- automated CI/browser test infrastructure: approved as an R6.0 implementation requirement by checklist Decision 23; not yet implemented.
 - deployment automation and hosting environment: **To be confirmed by Rahul.**
-- future Supabase schema or policy work: **To be confirmed by Rahul.**
+- phase-specific schema, policy, application, and rollout designs: to be produced and reviewed in R6.0-B onward under checklist Decisions 18–24; not implemented by R6.0-A.
 
 No item in this section should be treated as approved scope until it is backed by a repository issue, decision record, or reviewed pull request.
